@@ -2,613 +2,184 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>密室逃脫｜體驗紀錄</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台股虛擬投資帳戶</title>
 <style>
-  :root{
-    --bg:#F4EDDF;
-    --bg-2:#FBF7EE;
-    --surface:#FCFAF4;
-    --surface-2:#F6F0E2;
-    --line:#E3D8C2;
-    --line-soft:#EEE6D6;
-    --brass:#B07D2B;
-    --brass-hi:#CC992E;
-    --brass-dim:#C8B98E;
-    --star:#C68A1C;
-    --star-off:#DCD2BD;
-    --wax:#A8362B;
-    --wax-hi:#C24A3C;
-    --ink:#2C2317;
-    --muted:#7A6C56;
-    --muted-2:#A89A82;
-    --danger:#BB3B2F;
-    --radius:14px;
-    --shadow:0 16px 34px -22px rgba(80,58,20,.45);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{
-    background:
-      radial-gradient(1100px 560px at 50% -10%, rgba(204,153,46,.12), transparent 62%),
-      radial-gradient(820px 640px at 94% 4%, rgba(168,54,43,.07), transparent 55%),
-      var(--bg);
-    color:var(--ink);
-    font-family:"Noto Sans TC",system-ui,sans-serif;
-    min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 96px}
-
-  /* Header */
-  header.top{padding:46px 0 26px;border-bottom:1px solid var(--line);position:relative}
-  header.top::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;
-    background:linear-gradient(90deg,transparent,var(--brass) 30%,var(--brass-hi) 50%,var(--brass) 70%,transparent)}
-  .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-  .eyebrow{font-family:"Roboto Mono",monospace;font-size:12px;letter-spacing:.34em;
-    text-transform:uppercase;color:var(--brass);margin-bottom:12px}
-  h1{font-family:"Noto Serif TC",serif;font-weight:900;font-size:clamp(34px,6vw,52px);
-    margin:0;letter-spacing:.04em;line-height:1.1}
-  h1 .thin{color:var(--muted);font-weight:500}
-  .lede{color:var(--muted);margin:14px 0 0;max-width:48ch;font-size:15px}
-  .stats{display:flex;gap:26px;flex-wrap:wrap;margin-top:22px;align-items:baseline}
-  .stat .n{font-family:"Noto Serif TC",serif;font-size:30px;font-weight:700;color:var(--ink)}
-  .stat .n.love{color:var(--wax)}
-  .stat .lbl{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.18em;
-    color:var(--muted-2);text-transform:uppercase;margin-left:8px}
-
-  .sync{display:inline-flex;align-items:center;gap:7px;font-family:"Roboto Mono",monospace;
-    font-size:11px;letter-spacing:.08em;color:var(--muted);background:var(--bg-2);
-    border:1px solid var(--line);border-radius:20px;padding:6px 12px;white-space:nowrap}
-  .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2)}
-  .sync.cloud .dot{background:#4E9A56;box-shadow:0 0 0 3px rgba(78,154,86,.18)}
-  .sync.local .dot{background:var(--brass)}
-  .sync.err .dot{background:var(--danger)}
-
-  /* Toolbar */
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:26px 0 8px}
-  .search{flex:1 1 220px;min-width:180px;position:relative}
-  .search input{width:100%;background:var(--surface);border:1px solid var(--line);
-    color:var(--ink);border-radius:10px;padding:11px 14px 11px 38px;font:inherit;font-size:14px}
-  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);
-    width:16px;height:16px;stroke:var(--muted-2);fill:none;stroke-width:2}
-  select.sort{background:var(--surface);border:1px solid var(--line);color:var(--ink);
-    border-radius:10px;padding:11px 14px;font:inherit;font-size:14px;cursor:pointer}
-  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);
-    border-radius:10px;padding:11px 16px;font:inherit;font-size:14px;font-weight:500;
-    cursor:pointer;transition:border-color .15s,background .15s,transform .05s;white-space:nowrap}
-  .btn:hover{border-color:var(--brass-dim)}
-  .btn:active{transform:translateY(1px)}
-  .btn.primary{background:linear-gradient(180deg,var(--brass-hi),var(--brass));
-    color:#FBF6EA;border-color:transparent;font-weight:700;box-shadow:0 8px 18px -10px rgba(176,125,43,.7)}
-  .btn.ghost{background:transparent}
-  .btn.icon{padding:11px 13px}
-
-  /* Grid */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;margin-top:22px}
-  .card{position:relative;background:var(--surface);
-    border:1px solid var(--line);border-radius:var(--radius);padding:22px 22px 18px;
-    box-shadow:var(--shadow);overflow:hidden}
-  .card .ttl-eyebrow{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.14em;
-    color:var(--muted-2);text-transform:uppercase;margin-bottom:8px;padding-right:78px}
-  .card h3{font-family:"Noto Serif TC",serif;font-weight:700;font-size:21px;margin:0 78px 14px 0;
-    line-height:1.25;letter-spacing:.02em}
-  .rows{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .row .k{font-size:13px;color:var(--muted)}
-  .row .stars{font-size:16px;letter-spacing:2px;line-height:1;white-space:nowrap}
-  .star-on{color:var(--star)}
-  .star-off{color:var(--star-off)}
-  .feat-note{font-size:12px;color:var(--muted);margin:-3px 0 12px;
-    border-left:2px solid var(--brass-dim);padding:2px 0 2px 10px}
-  .excerpt{font-size:13.5px;color:var(--muted);border-top:1px dashed var(--line);
-    padding-top:12px;margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere}
-  .excerpt.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .more{background:none;border:none;color:var(--brass);font:inherit;font-size:12px;
-    cursor:pointer;padding:6px 0 0}
-  .card-actions{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
-  .mini{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;
-    padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
-  .mini:hover{border-color:var(--brass-dim);color:var(--ink)}
-  .mini.del:hover{border-color:var(--danger);color:var(--danger)}
-
-  /* Love seal (signature: wax stamp) */
-  .seal{position:absolute;top:18px;right:18px;width:64px;height:64px;border-radius:50%;
-    display:grid;place-items:center;text-align:center;
-    background:radial-gradient(circle at 50% 36%, var(--wax-hi), var(--wax) 70%, #8A2A20);
-    box-shadow:inset 0 1px 2px rgba(255,255,255,.3),inset 0 -3px 6px rgba(0,0,0,.25),0 4px 10px -4px rgba(168,54,43,.6)}
-  .seal .num{font-family:"Noto Serif TC",serif;font-weight:900;font-size:22px;color:#FCEFE6;line-height:1}
-  .seal .heart{font-size:10px;color:#F4D2C9;margin-top:1px;line-height:1;letter-spacing:.05em}
-  .seal.spark{box-shadow:inset 0 1px 2px rgba(255,255,255,.35),0 0 0 2px var(--brass-hi),
-    0 0 18px 1px rgba(204,153,46,.6),0 4px 10px -4px rgba(168,54,43,.6)}
-  .seal .sparkle{position:absolute;top:-8px;right:-8px;font-size:17px;
-    filter:drop-shadow(0 1px 4px rgba(176,125,43,.7))}
-
-  /* Empty */
-  .empty{text-align:center;padding:70px 20px;border:1px dashed var(--line);border-radius:var(--radius);
-    margin-top:24px;background:var(--bg-2)}
-  .empty .lock{font-size:42px;margin-bottom:14px}
-  .empty h3{font-family:"Noto Serif TC",serif;font-size:22px;margin:0 0 8px}
-  .empty p{color:var(--muted);margin:0 0 22px}
-  .empty .row-btn{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-
-  /* Modal */
-  .overlay{position:fixed;inset:0;background:rgba(44,35,23,.42);backdrop-filter:blur(3px);
-    display:none;align-items:flex-start;justify-content:center;padding:34px 16px;z-index:50;overflow:auto}
-  .overlay.show{display:flex}
-  .modal{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--line);
-    border-radius:18px;box-shadow:0 30px 60px -28px rgba(60,42,12,.5);padding:26px}
-  .modal h2{font-family:"Noto Serif TC",serif;font-size:24px;margin:0 0 4px}
-  .modal .sub{color:var(--muted);font-size:13px;margin:0 0 22px}
-  .field{margin-bottom:18px}
-  .field > label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px;letter-spacing:.02em}
-  .field input[type=text],.field input[type=date],.field textarea{width:100%;background:var(--bg-2);
-    border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font:inherit;font-size:14px}
-  .field textarea{min-height:108px;resize:vertical;line-height:1.6}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .rate{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;
-    border-bottom:1px solid var(--line-soft)}
-  .rate .rk{font-size:14px}
-  .rate .rk small{display:block;color:var(--muted-2);font-size:11px}
-  .picker{font-size:24px;letter-spacing:4px;cursor:pointer;user-select:none;line-height:1}
-  .picker span{transition:transform .08s,color .1s;display:inline-block}
-  .picker span:hover{transform:scale(1.18)}
-  .pk-on{color:var(--star)}
-  .pk-onl{color:var(--wax)}
-  .pk-off{color:var(--star-off)}
-  .feat-toggle{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);
-    margin:16px 0 4px;cursor:pointer}
-  .switch{width:40px;height:23px;border-radius:20px;background:var(--line);position:relative;
-    transition:background .15s;flex:none}
-  .switch::after{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;
-    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s,background .15s}
-  .feat-toggle.on .switch{background:var(--brass)}
-  .feat-toggle.on .switch::after{transform:translateX(17px)}
-  .feat-box{display:none;margin-top:6px}
-  .feat-box.show{display:block}
-  .spark-row{display:flex;align-items:center;gap:9px;font-size:13px;margin-top:10px;
-    color:var(--muted-2);cursor:not-allowed;opacity:.55}
-  .spark-row.enabled{color:var(--brass);cursor:pointer;opacity:1}
-  .spark-chk{width:18px;height:18px;border:1px solid var(--line);border-radius:5px;display:grid;
-    place-items:center;font-size:12px;flex:none;background:#fff}
-  .spark-row.on .spark-chk{background:var(--brass);border-color:var(--brass);color:#fff}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
-
-  /* Legend */
-  .legend{margin-top:14px}
-  .legend summary{cursor:pointer;color:var(--brass);font-size:13px;list-style:none;display:inline-flex;
-    align-items:center;gap:7px;font-family:"Roboto Mono",monospace;letter-spacing:.06em}
-  .legend summary::-webkit-details-marker{display:none}
-  .legend[open] summary{margin-bottom:14px}
-  .legend .body{font-size:13px;color:var(--muted);background:var(--bg-2);border:1px solid var(--line-soft);
-    border-radius:12px;padding:18px 20px}
-  .legend .body b{color:var(--ink);font-weight:700}
-  .legend .body .hrt{color:var(--wax);font-weight:700}
-  .legend .body ul{margin:8px 0 0;padding-left:18px}
-  .legend .body li{margin:3px 0}
-
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
-    background:var(--ink);border:1px solid var(--brass);color:#FBF6EA;padding:11px 20px;
-    border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:all .25s;z-index:80}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-  :focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
-  @media (max-width:480px){
-    .two{grid-template-columns:1fr}
-    .seal{width:56px;height:56px}
-    .card h3{margin-right:66px}
-  }
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+:root{--bg:#f5f6f8;--card:#fff;--text:#1d2129;--sub:#6b7280;--line:#e5e7eb;--up:#d93025;--down:#188038;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1b1f27;--text:#e8eaed;--sub:#9aa0a6;--line:#2c313b;--up:#ff6b61;--down:#4cc38a;--accent:#6ea0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,"Noto Sans TC",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 12px}
+h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat small{color:var(--sub);display:block}
+.stat b{font-size:18px}
+.up{color:var(--up)}.down{color:var(--down)}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;align-items:end}
+label{font-size:12px;color:var(--sub);display:block}
+input,select,button{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}
+button{cursor:pointer;background:var(--accent);color:#fff;border:0}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button.sell{background:var(--down)}button.buy{background:var(--up)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}.tools button{width:auto;padding:6px 12px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child,th.l,td.l{text-align:left}
+th{color:var(--sub);font-weight:500}
+td input{width:90px;padding:3px 6px;text-align:right}
+.msg{font-size:13px;color:var(--sub);margin-top:8px;min-height:18px}
+.err{color:var(--up)}
+.hint{font-size:12px;color:var(--sub);margin-top:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
-    <div class="topline">
-      <div>
-        <div class="eyebrow">Escape Room · Field Log</div>
-        <h1>密室逃脫 <span class="thin">體驗紀錄</span></h1>
-      </div>
-      <div class="sync local" id="syncPill"><span class="dot"></span><span id="syncTxt">本機儲存</span></div>
-    </div>
-    <p class="lede">客觀拆解場景、劇情、謎題，主觀蓋下喜愛封印。一場一場記下來，揪團前先翻翻自己的檔案。</p>
-    <div class="stats">
-      <div class="stat"><span class="n" id="stCount">0</span><span class="lbl">主題</span></div>
-      <div class="stat"><span class="n love" id="stLove">—</span><span class="lbl">平均喜愛</span></div>
-      <div class="stat"><span class="n" id="stSpark">0</span><span class="lbl">閃光收藏</span></div>
-    </div>
+  <h1>📈 台股虛擬投資帳戶</h1>
 
-    <details class="legend">
-      <summary>▸ 評分說明</summary>
-      <div class="body">
-        前三項（<b>場景布置 · 故事劇情 · 謎題設計</b>）為客觀評比，針對各項「完整度」打 ★，滿分五星。正常發揮的作品通常不會落到一、二星；<b>三星不代表差</b>——例如主打劇情的作品謎題可能評低，但整體喜愛仍可以很高。<br>
-        <b>遊戲特色</b>為選配：實境遊戲常融入其他元素，若有特殊設計才增列此項。<br>
-        <b>喜愛程度</b>為主觀個人偏好，僅供參考：
-        <ul>
-          <li><span class="hrt">❤ 5</span>　好玩，可以快揪團去體驗</li>
-          <li><span class="hrt">❤ 4</span>　值得體驗的主題</li>
-          <li><span class="hrt">❤ 3</span>　正常發揮，但部分過程不是我的菜</li>
-          <li><span class="hrt">❤ 2</span>　過程中不開心，或遇到重大失誤</li>
-          <li><span class="hrt">❤ 5 ✨</span>　私心多加的五星＆閃光標示</li>
-        </ul>
-      </div>
-    </details>
-  </header>
+  <div class="card"><div class="grid" id="stats"></div></div>
 
-  <div class="toolbar">
-    <div class="search">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="search" type="text" placeholder="搜尋主題或工作室…" autocomplete="off">
-    </div>
-    <select class="sort" id="sort">
-      <option value="new">排序：最新加入</option>
-      <option value="love">排序：最愛優先</option>
-      <option value="score">排序：客觀總分</option>
-      <option value="name">排序：主題名稱</option>
-    </select>
-    <button class="btn primary" id="addBtn">＋ 新增體驗</button>
-    <button class="btn ghost icon" id="exportBtn" title="匯出 JSON 備份">匯出</button>
-    <button class="btn ghost icon" id="importBtn" title="從 JSON 匯入">匯入</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  <div class="card">
+    <h2>下單</h2>
+    <form id="orderForm">
+      <div><label>股票代號</label><input id="sym" required placeholder="2330" inputmode="numeric"></div>
+      <div><label>名稱(選填)</label><input id="name" placeholder="台積電"></div>
+      <div><label>價格</label><input id="price" type="number" step="0.01" min="0.01" required></div>
+      <div><label>股數(1張=1000股)</label><input id="qty" type="number" step="1" min="1" required value="1000"></div>
+      <div><label>類型</label>
+        <select id="kind"><option value="stock">一般股票(賣出稅0.3%)</option><option value="etf">ETF(賣出稅0.1%)</option></select></div>
+      <div><button type="button" class="buy" onclick="trade('buy')">買進</button></div>
+      <div><button type="button" class="sell" onclick="trade('sell')">賣出</button></div>
+    </form>
+    <div class="msg" id="msg"></div>
+    <div class="hint">手續費 0.1425%×折扣(低消 20 元);證交稅僅賣出時收取。買賣會依下方設定計算。</div>
   </div>
 
-  <div id="grid" class="grid"></div>
-  <div id="empty" class="empty" hidden>
-    <div class="lock">🗝️</div>
-    <h3>檔案室還空著</h3>
-    <p>還沒有任何紀錄。破完第一間，就回來蓋下你的第一枚封印。</p>
-    <div class="row-btn">
-      <button class="btn primary" id="emptyAdd">＋ 新增第一筆</button>
-      <button class="btn ghost" id="loadSample">載入範例看看</button>
-    </div>
+  <div class="card">
+    <h2>持股 <span class="hint">(現價可手動修改,或按「更新股價」從證交所抓收盤價)</span></h2>
+    <div class="tools" style="margin-bottom:8px"><button onclick="fetchPrices()">更新股價</button></div>
+    <div class="scroll"><table id="pos"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>交易紀錄</h2>
+    <div class="scroll"><table id="log"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>帳戶設定</h2>
+    <form id="setForm" onsubmit="return false">
+      <div><label>初始資金(重置時套用)</label><input id="cap" type="number" min="1" value="1000000"></div>
+      <div><label>手續費折扣(例:0.6=六折)</label><input id="disc" type="number" step="0.01" min="0" max="1" value="1"></div>
+      <div><button class="ghost" onclick="saveSettings()">儲存折扣</button></div>
+      <div><button class="ghost" onclick="resetAcct()">重置帳戶</button></div>
+      <div><button class="ghost" onclick="exportData()">匯出 JSON</button></div>
+      <div><button class="ghost" onclick="document.getElementById('imp').click()">匯入 JSON</button></div>
+    </form>
+    <input type="file" id="imp" accept=".json" hidden>
   </div>
 </div>
 
-<!-- Modal -->
-<div class="overlay" id="overlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
-    <h2 id="mTitle">新增體驗</h2>
-    <p class="sub">客觀打星、主觀蓋章，最後留下心得。</p>
+<script>
+const KEY='tw-paper-account-v1';
+const fresh=cap=>({cash:cap,initial:cap,disc:1,pos:{},log:[],realized:0});
+let S=load();
 
-    <div class="field">
-      <label for="fTitle">主題名稱</label>
-      <input id="fTitle" type="text" placeholder="例：消失的密令" maxlength="60">
-    </div>
-    <div class="two">
-      <div class="field">
-        <label for="fStudio">工作室 / 品牌</label>
-        <input id="fStudio" type="text" placeholder="選填" maxlength="40">
-      </div>
-      <div class="field">
-        <label for="fDate">體驗日期</label>
-        <input id="fDate" type="date">
-      </div>
-    </div>
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s.cash==='number')return s}catch(e){}return fresh(1000000)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('zh-TW');
+const cls=n=>n>0?'up':n<0?'down':'';
+const sgn=n=>(n>0?'+':'')+fmt(n);
+const fee=amt=>Math.max(20,Math.floor(amt*0.001425*S.disc));
+function msg(t,err){const m=$('msg');m.textContent=t;m.className='msg'+(err?' err':'')}
 
-    <div class="rate" data-key="scene">
-      <div class="rk">場景布置<small>裝潢、造景、場地、機關道具</small></div>
-      <div class="picker" data-target="scene"></div>
-    </div>
-    <div class="rate" data-key="story">
-      <div class="rk">故事劇情<small>劇情安排、完整性、主題契合度</small></div>
-      <div class="picker" data-target="story"></div>
-    </div>
-    <div class="rate" data-key="puzzle">
-      <div class="rk">謎題設計<small>豐富度、合理性、創意、契合度</small></div>
-      <div class="picker" data-target="puzzle"></div>
-    </div>
+function trade(side){
+  const sym=$('sym').value.trim(),price=parseFloat($('price').value),qty=parseInt($('qty').value,10);
+  if(!sym||!(price>0)||!(qty>0))return msg('請填寫完整的代號、價格與股數',true);
+  const amt=Math.round(price*qty),f=fee(amt);
+  let p=S.pos[sym];
+  if(side==='buy'){
+    const cost=amt+f;
+    if(cost>S.cash)return msg(`現金不足:需要 ${fmt(cost)},目前 ${fmt(S.cash)}`,true);
+    S.cash-=cost;
+    if(!p)p=S.pos[sym]={name:$('name').value.trim(),qty:0,cost:0,last:price,kind:$('kind').value};
+    if($('name').value.trim())p.name=$('name').value.trim();
+    p.qty+=qty;p.cost+=cost;p.last=price;p.kind=$('kind').value;
+    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax:0,pnl:null});
+    msg(`已買進 ${sym} ${fmt(qty)} 股,成本 ${fmt(cost)}`);
+  }else{
+    if(!p||p.qty<qty)return msg(`持股不足:${sym} 目前 ${p?fmt(p.qty):0} 股`,true);
+    const tax=Math.floor(amt*(($('kind').value==='etf'||p.kind==='etf')?0.001:0.003));
+    const net=amt-f-tax,basis=p.cost*qty/p.qty,pnl=net-basis;
+    S.cash+=net;S.realized+=pnl;p.cost-=basis;p.qty-=qty;p.last=price;
+    if(p.qty===0)delete S.pos[sym];
+    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax,pnl});
+    msg(`已賣出 ${sym} ${fmt(qty)} 股,實現損益 ${sgn(pnl)}`);
+  }
+  save();render();
+}
 
-    <div class="feat-toggle" id="featToggle">
-      <span class="switch"></span>
-      <span>有特殊設計（增列「遊戲特色」）</span>
-    </div>
-    <div class="feat-box" id="featBox">
-      <div class="rate" data-key="feature" style="border:none;padding-top:4px">
-        <div class="rk">遊戲特色<small>融入的特殊元素或設計</small></div>
-        <div class="picker" data-target="feature"></div>
-      </div>
-      <input id="fFeatNote" type="text" placeholder="特色備註，例：實體解謎 × 沉浸式劇場" maxlength="50"
-        style="width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 13px;font:inherit;font-size:13px;margin-top:6px">
-    </div>
+function setLast(sym,v){const x=parseFloat(v);if(x>0){S.pos[sym].last=x;save();render()}}
+function sellAllOf(sym){const p=S.pos[sym];$('sym').value=sym;$('qty').value=p.qty;$('price').value=p.last;$('kind').value=p.kind||'stock';window.scrollTo({top:0,behavior:'smooth'})}
 
-    <div class="rate" data-key="love" style="margin-top:14px">
-      <div class="rk" style="color:var(--wax)">喜愛程度<small>主觀偏好，僅供參考</small></div>
-      <div class="picker love" data-target="love"></div>
-    </div>
-    <div class="spark-row" id="sparkRow">
-      <span class="spark-chk" id="sparkChk"></span>
-      <span>✨ 私心閃光（滿五顆 ❤ 才能蓋）</span>
-    </div>
+function render(){
+  let mv=0,cost=0;
+  for(const p of Object.values(S.pos)){mv+=p.last*p.qty;cost+=p.cost}
+  const eq=S.cash+mv,total=eq-S.initial,unreal=mv-cost;
+  $('stats').innerHTML=[
+    ['總資產',fmt(eq),''],['現金',fmt(S.cash),''],['持股市值',fmt(mv),''],
+    ['未實現損益',sgn(unreal),cls(unreal)],['已實現損益',sgn(S.realized),cls(S.realized)],
+    ['總報酬',sgn(total)+` (${(total/S.initial*100).toFixed(2)}%)`,cls(total)]
+  ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
 
-    <div class="field" style="margin-top:18px">
-      <label for="fReview">心得全文</label>
-      <textarea id="fReview" placeholder="完整心得、亮點、雷點、給後人的提醒…"></textarea>
-    </div>
+  const rows=Object.entries(S.pos).map(([sym,p])=>{
+    const v=p.last*p.qty,u=v-p.cost;
+    return `<tr><td class="l">${sym} ${esc(p.name||'')}</td><td>${fmt(p.qty)}</td><td>${(p.cost/p.qty).toFixed(2)}</td>
+    <td><input type="number" step="0.01" value="${p.last}" onchange="setLast('${sym}',this.value)"></td>
+    <td>${fmt(v)}</td><td class="${cls(u)}">${sgn(u)}</td><td class="${cls(u)}">${(u/p.cost*100).toFixed(2)}%</td>
+    <td><button class="ghost" style="padding:3px 8px" onclick="sellAllOf('${sym}')">帶入賣出</button></td></tr>`}).join('');
+  $('pos').innerHTML=`<tr><th class="l">股票</th><th>股數</th><th>均價(含費)</th><th>現價</th><th>市值</th><th>損益</th><th>報酬率</th><th></th></tr>`+(rows||'<tr><td class="l" colspan="8">目前沒有持股</td></tr>');
 
-    <div class="modal-actions">
-      <button class="btn ghost" id="cancelBtn">取消</button>
-      <button class="btn primary" id="saveBtn">儲存</button>
-    </div>
-  </div>
-</div>
+  $('log').innerHTML=`<tr><th class="l">時間</th><th class="l">買/賣</th><th class="l">股票</th><th>價格</th><th>股數</th><th>手續費</th><th>證交稅</th><th>實現損益</th></tr>`+
+    (S.log.map(l=>`<tr><td class="l">${new Date(l.t).toLocaleString('zh-TW',{hour12:false})}</td><td class="l ${l.side==='buy'?'up':'down'}">${l.side==='buy'?'買進':'賣出'}</td>
+    <td class="l">${l.sym} ${esc(l.name||'')}</td><td>${l.price}</td><td>${fmt(l.qty)}</td><td>${fmt(l.fee)}</td><td>${fmt(l.tax)}</td>
+    <td class="${cls(l.pnl)}">${l.pnl==null?'-':sgn(l.pnl)}</td></tr>`).join('')||'<tr><td class="l" colspan="8">尚無交易</td></tr>');
+  $('cap').value=S.initial;$('disc').value=S.disc;
+}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-<div class="toast" id="toast"></div>
+async function fetchPrices(){
+  const syms=Object.keys(S.pos);
+  if(!syms.length)return msg('沒有持股可更新');
+  msg('更新中…');
+  try{
+    const r=await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+    const d=await r.json();let n=0;
+    for(const x of d){const p=S.pos[x.Code];const c=parseFloat(x.ClosingPrice);if(p&&c>0){p.last=c;if(!p.name)p.name=x.Name;n++}}
+    save();render();msg(`已更新 ${n}/${syms.length} 檔(上市股票收盤價;上櫃請手動輸入)`);
+  }catch(e){msg('無法取得股價(可能被瀏覽器或網路擋下),請手動輸入現價',true)}
+}
 
-<script type="module">
-/* ============================================================
-   跨裝置同步設定 —— 已沿用你的 dailywork 專案，無需再貼
-   · 資料寫進 dailywork 專案底下名為「escapeRoomLog」的獨立集合，
-     跟你原本的日常追蹤資料分開、不互相干擾。
-   · dailywork 的 Firestore 規則本來就是全開（allow read, write: if true），
-     所以這個集合直接就能讀寫，不必再改規則。
-   · 想改放 nurse-work 專案的話，把下面整段 config 換成 nurse-work 那份即可。
-   ============================================================ */
-const firebaseConfig = {
-  apiKey: "AIzaSyBqZLrJ-a9FsIwKKs5Cegjq2QjzeWGpSeI",
-  authDomain: "dailywork-602a3.firebaseapp.com",
-  projectId: "dailywork-602a3",
-  storageBucket: "dailywork-602a3.firebasestorage.app",
-  messagingSenderId: "969223511394",
-  appId: "1:969223511394:web:719fc05024c326ba0c603b"
+function saveSettings(){const d=parseFloat($('disc').value);if(d>=0&&d<=1){S.disc=d;save();msg('已儲存手續費折扣')}else msg('折扣需介於 0~1',true)}
+function resetAcct(){
+  const cap=parseFloat($('cap').value);
+  if(!(cap>0))return msg('初始資金需大於 0',true);
+  if(!confirm(`確定重置?所有持股與紀錄會清空,資金重設為 ${fmt(cap)}。`))return;
+  const d=S.disc;S=fresh(cap);S.disc=d;save();render();msg('帳戶已重置')
+}
+function exportData(){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download='tw-paper-account.json';a.click();URL.revokeObjectURL(a.href)
+}
+$('imp').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{const s=JSON.parse(t);if(typeof s.cash!=='number'||!s.pos||!s.log)throw 0;S=s;save();render();msg('匯入成功')}).catch(()=>msg('檔案格式不正確',true));
+  e.target.value=''
 };
-const COLLECTION = "escapeRoomLog";   // Firestore 集合名稱，可自訂
-/* ============================================================ */
-
-(async function(){
-  "use strict";
-  const KEY = "escapeRoomLog.v1";
-  const $ = s => document.querySelector(s);
-
-  let entries = [];
-  let editingId = null;
-  let backend = "local";                 // "cloud" | "local"
-  let fs = null, db = null;              // firestore module + db
-  const draft = { scene:0, story:0, puzzle:0, feature:0, love:0, spark:false, feat:false };
-
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  }
-  function starStr(n){let h="";for(let i=1;i<=5;i++)h+=`<span class="${i<=n?'star-on':'star-off'}">★</span>`;return h;}
-  function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2000);}
-  function fmtDate(d){if(!d)return"";const p=d.split("-");return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:d;}
-  function setSync(state,txt){const p=$("#syncPill");p.className="sync "+state;$("#syncTxt").textContent=txt;}
-
-  /* ---------- storage backends ---------- */
-  function localLoad(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):[];}catch(e){return [];}}
-  function localSave(){try{localStorage.setItem(KEY,JSON.stringify(entries));}catch(e){}}
-
-  async function initBackend(){
-    const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("貼上");
-    if(configured){
-      try{
-        const appMod = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-        fs = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const app = appMod.initializeApp(firebaseConfig);
-        db = fs.getFirestore(app);
-        backend = "cloud";
-        setSync("cloud","雲端同步中");
-        // 即時監聽：任一裝置更新，所有裝置同步
-        fs.onSnapshot(fs.collection(db, COLLECTION), snap=>{
-          entries = snap.docs.map(d=>d.data());
-          render();
-        }, err=>{ setSync("err","同步失敗 · 改用本機"); fallbackLocal(); });
-        return;
-      }catch(e){ /* fall through */ }
-    }
-    fallbackLocal();
-  }
-  function fallbackLocal(){
-    backend="local"; setSync("local","本機儲存");
-    entries = localLoad(); render();
-  }
-
-  async function persistUpsert(rec){
-    if(backend==="cloud"){
-      try{ await fs.setDoc(fs.doc(db, COLLECTION, rec.id), rec); }
-      catch(e){ toast("雲端寫入失敗，已暫存本機"); }
-    }else{ localSave(); }
-  }
-  async function persistDelete(id){
-    if(backend==="cloud"){ try{ await fs.deleteDoc(fs.doc(db, COLLECTION, id)); }catch(e){ toast("雲端刪除失敗"); } }
-    else{ localSave(); }
-  }
-  async function persistBulk(list){
-    if(backend==="cloud"){
-      try{ await Promise.all(list.map(r=>fs.setDoc(fs.doc(db, COLLECTION, r.id), r))); }
-      catch(e){ toast("部分雲端寫入失敗"); }
-    }else{ localSave(); }
-  }
-
-  /* ---------- stats ---------- */
-  function renderStats(){
-    $("#stCount").textContent = entries.length;
-    const loves = entries.filter(e=>e.love>0).map(e=>e.love);
-    $("#stLove").textContent = loves.length ? "❤"+(loves.reduce((a,b)=>a+b,0)/loves.length).toFixed(1) : "—";
-    $("#stSpark").textContent = entries.filter(e=>e.spark).length;
-  }
-
-  /* ---------- list / grid ---------- */
-  function currentList(){
-    const q=$("#search").value.trim().toLowerCase();
-    let list=entries.filter(e=>!q||(e.title||"").toLowerCase().includes(q)||(e.studio||"").toLowerCase().includes(q));
-    const sort=$("#sort").value;
-    list.sort((a,b)=>{
-      if(sort==="love")return (b.love-a.love)||(b.created-a.created);
-      if(sort==="score")return ((b.scene+b.story+b.puzzle)-(a.scene+a.story+a.puzzle))||(b.created-a.created);
-      if(sort==="name")return (a.title||"").localeCompare(b.title||"","zh-Hant");
-      return b.created-a.created;
-    });
-    return list;
-  }
-  function cardHTML(e){
-    const eyebrow=[e.studio,fmtDate(e.date)].filter(Boolean).join(" · ")||"未註明";
-    const sealCls=e.spark?"seal spark":"seal";
-    const sparkle=e.spark?`<span class="sparkle">✨</span>`:"";
-    const feat=e.feat?`<div class="row"><span class="k">遊戲特色</span><span class="stars">${starStr(e.feature)}</span></div>`:"";
-    const featNote=(e.feat&&e.featNote)?`<div class="feat-note">${escapeHtml(e.featNote)}</div>`:"";
-    const review=e.review?`<div class="excerpt clamp" id="ex-${e.id}">${escapeHtml(e.review)}</div>${e.review.length>70?`<button class="more" data-more="${e.id}">展開全文 ▾</button>`:""}`:"";
-    return `<article class="card">
-      <div class="${sealCls}">${sparkle}<div class="num">${e.love||"–"}</div><div class="heart">❤ 喜愛</div></div>
-      <div class="ttl-eyebrow">${escapeHtml(eyebrow)}</div>
-      <h3>${escapeHtml(e.title||"（未命名主題）")}</h3>
-      <div class="rows">
-        <div class="row"><span class="k">場景布置</span><span class="stars">${starStr(e.scene)}</span></div>
-        <div class="row"><span class="k">故事劇情</span><span class="stars">${starStr(e.story)}</span></div>
-        <div class="row"><span class="k">謎題設計</span><span class="stars">${starStr(e.puzzle)}</span></div>
-        ${feat}
-      </div>${featNote}${review}
-      <div class="card-actions">
-        <button class="mini" data-edit="${e.id}">編輯</button>
-        <button class="mini del" data-del="${e.id}">刪除</button>
-      </div></article>`;
-  }
-  function render(){
-    renderStats();
-    const grid=$("#grid"),empty=$("#empty");
-    if(entries.length===0){grid.innerHTML="";empty.hidden=false;return;}
-    empty.hidden=true;
-    const list=currentList();
-    grid.innerHTML=list.length?list.map(cardHTML).join(""):`<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:30px">找不到符合的紀錄。</p>`;
-  }
-
-  /* ---------- pickers ---------- */
-  function buildPicker(target,love){
-    const el=document.querySelector(`.picker[data-target="${target}"]`);
-    el.innerHTML="";
-    for(let i=1;i<=5;i++){const s=document.createElement("span");s.textContent="★";s.dataset.v=i;el.appendChild(s);}
-    const paint=n=>[...el.children].forEach(c=>{const on=+c.dataset.v<=n;c.className=on?(love?"pk-onl":"pk-on"):"pk-off";});
-    el.addEventListener("mouseover",ev=>{if(ev.target.dataset.v)paint(+ev.target.dataset.v);});
-    el.addEventListener("mouseleave",()=>paint(draft[target]));
-    el.addEventListener("click",ev=>{
-      if(!ev.target.dataset.v)return;
-      let v=+ev.target.dataset.v; if(draft[target]===v)v=v-1;
-      draft[target]=v; paint(v); if(target==="love")syncSpark();
-    });
-    paint(draft[target]);
-  }
-  function syncSpark(){
-    const row=$("#sparkRow");const enabled=draft.love===5;
-    row.classList.toggle("enabled",enabled);
-    if(!enabled)draft.spark=false;
-    row.classList.toggle("on",draft.spark);
-    $("#sparkChk").textContent=draft.spark?"✓":"";
-  }
-  function setFeat(on){draft.feat=on;$("#featToggle").classList.toggle("on",on);$("#featBox").classList.toggle("show",on);}
-
-  /* ---------- modal ---------- */
-  function openModal(entry){
-    editingId=entry?entry.id:null;
-    $("#mTitle").textContent=entry?"編輯體驗":"新增體驗";
-    $("#fTitle").value=entry?.title||"";
-    $("#fStudio").value=entry?.studio||"";
-    $("#fDate").value=entry?.date||"";
-    $("#fReview").value=entry?.review||"";
-    $("#fFeatNote").value=entry?.featNote||"";
-    Object.assign(draft,{scene:entry?.scene||0,story:entry?.story||0,puzzle:entry?.puzzle||0,
-      feature:entry?.feature||0,love:entry?.love||0,spark:!!entry?.spark,feat:!!entry?.feat});
-    ["scene","story","puzzle","feature","love"].forEach(t=>buildPicker(t,t==="love"));
-    setFeat(draft.feat); syncSpark();
-    $("#overlay").classList.add("show");
-    setTimeout(()=>$("#fTitle").focus(),50);
-  }
-  function closeModal(){$("#overlay").classList.remove("show");}
-
-  async function saveEntry(){
-    const title=$("#fTitle").value.trim();
-    if(!title){toast("請先填主題名稱");$("#fTitle").focus();return;}
-    const prev=editingId?entries.find(e=>e.id===editingId):null;
-    const rec={
-      id:editingId||uid(),
-      created:prev?prev.created:Date.now(),
-      title,studio:$("#fStudio").value.trim(),date:$("#fDate").value,
-      scene:draft.scene,story:draft.story,puzzle:draft.puzzle,
-      feat:draft.feat,feature:draft.feat?draft.feature:0,
-      featNote:draft.feat?$("#fFeatNote").value.trim():"",
-      love:draft.love,spark:(draft.love===5&&draft.spark),
-      review:$("#fReview").value.trim()
-    };
-    // optimistic local update（雲端模式下 onSnapshot 會再校正一次）
-    if(editingId)entries=entries.map(e=>e.id===editingId?rec:e); else entries.unshift(rec);
-    render(); closeModal();
-    await persistUpsert(rec);
-    toast(editingId?"已更新":"已新增");
-  }
-
-  /* ---------- events ---------- */
-  $("#addBtn").onclick=()=>openModal(null);
-  $("#emptyAdd").onclick=()=>openModal(null);
-  $("#cancelBtn").onclick=closeModal;
-  $("#saveBtn").onclick=saveEntry;
-  $("#overlay").addEventListener("click",e=>{if(e.target===$("#overlay"))closeModal();});
-  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
-  $("#featToggle").onclick=()=>setFeat(!draft.feat);
-  $("#sparkRow").onclick=()=>{if(draft.love!==5)return;draft.spark=!draft.spark;syncSpark();};
-  $("#search").oninput=render;
-  $("#sort").onchange=render;
-
-  $("#grid").addEventListener("click",async e=>{
-    const ed=e.target.dataset.edit,dl=e.target.dataset.del,mr=e.target.dataset.more;
-    if(ed){openModal(entries.find(x=>x.id===ed));}
-    else if(dl){
-      const it=entries.find(x=>x.id===dl);
-      if(confirm(`確定刪除「${it?.title||"這筆紀錄"}」？`)){
-        entries=entries.filter(x=>x.id!==dl); render(); await persistDelete(dl); toast("已刪除");
-      }
-    }else if(mr){
-      const ex=document.getElementById("ex-"+mr);
-      const clamped=ex.classList.toggle("clamp");
-      e.target.textContent=clamped?"展開全文 ▾":"收合 ▴";
-    }
-  });
-
-  /* ---------- export / import ---------- */
-  $("#exportBtn").onclick=()=>{
-    if(!entries.length){toast("還沒有資料可匯出");return;}
-    const blob=new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download=`escape-room-log-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();URL.revokeObjectURL(a.href);toast("已匯出備份");
-  };
-  $("#importBtn").onclick=()=>$("#importFile").click();
-  $("#importFile").onchange=ev=>{
-    const f=ev.target.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=async()=>{
-      try{
-        const data=JSON.parse(r.result);
-        if(!Array.isArray(data))throw 0;
-        const merge=entries.length?confirm("匯入資料。\n\n按「確定」＝合併到現有紀錄\n按「取消」＝直接取代全部"):true;
-        const clean=data.map(d=>({...d,id:d.id||uid(),created:d.created||Date.now()}));
-        entries=merge?[...clean,...entries]:clean;
-        render(); await persistBulk(entries); toast(`已匯入 ${clean.length} 筆`);
-      }catch(e){toast("檔案格式不正確");}
-      ev.target.value="";
-    };
-    r.readAsText(f);
-  };
-
-  /* ---------- sample ---------- */
-  $("#loadSample").onclick=async()=>{
-    const sample=[
-      {id:uid(),created:Date.now(),title:"鐘樓裡的最後一封信",studio:"霧鎖工作室",date:"2026-05-18",
-       scene:5,story:5,puzzle:4,feat:true,feature:5,featNote:"沉浸式劇場 × NPC 即時互動",
-       love:5,spark:true,review:"場景細到連信紙都做舊處理，劇情層層翻轉，最後一封信的揭曉直接起雞皮疙瘩。謎題稍微偏簡單，但完全被氛圍蓋過去。私心閃光收藏。"},
-      {id:uid(),created:Date.now()-1,title:"地下三樓的實驗紀錄",studio:"齒輪密室",date:"2026-04-02",
-       scene:4,story:3,puzzle:5,feat:false,feature:0,featNote:"",
-       love:4,spark:false,review:"硬核解謎派，機關環環相扣很過癮。劇情比較工具性，但對愛拆題的人來說非常值得。"},
-      {id:uid(),created:Date.now()-2,title:"褪色的遊樂園",studio:"光點實境",date:"2026-02-21",
-       scene:3,story:4,puzzle:3,feat:false,feature:0,featNote:"",
-       love:3,spark:false,review:"題目正常發揮，懷舊主題有打到我，只是部分謎題提示不夠明確，卡關時體驗稍微掉了一點。"}
-    ];
-    entries=sample; render(); await persistBulk(entries); toast("已載入範例（可隨時刪除）");
-  };
-
-  await initBackend();
-})();
+render();
 </script>
 </body>
 </html>
