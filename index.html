@@ -42,6 +42,12 @@ td input{width:90px;padding:3px 6px;text-align:right}
   <div class="card"><div class="grid" id="stats"></div></div>
 
   <div class="card">
+    <h2>績效</h2>
+    <div class="grid" id="perf" style="margin-bottom:10px"></div>
+    <svg id="chart" viewBox="0 0 600 180" style="width:100%;height:auto;display:block"></svg>
+  </div>
+
+  <div class="card">
     <h2>下單</h2>
     <form id="orderForm">
       <div><label>股票代號</label><input id="sym" required placeholder="2330" inputmode="numeric"></div>
@@ -84,10 +90,10 @@ td input{width:90px;padding:3px 6px;text-align:right}
 
 <script>
 const KEY='tw-paper-account-v1';
-const fresh=cap=>({cash:cap,initial:cap,disc:1,pos:{},log:[],realized:0});
+const fresh=cap=>({cash:cap,initial:cap,disc:1,pos:{},log:[],realized:0,hist:[{t:Date.now(),eq:cap}]});
 let S=load();
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s.cash==='number')return s}catch(e){}return fresh(1000000)}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s.cash==='number'){if(!s.hist)s.hist=[{t:Date.now(),eq:s.initial}];return s}}catch(e){}return fresh(1000000)}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString('zh-TW');
@@ -119,10 +125,16 @@ function trade(side){
     S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax,pnl});
     msg(`已賣出 ${sym} ${fmt(qty)} 股,實現損益 ${sgn(pnl)}`);
   }
-  save();render();
+  snap();save();render();
 }
 
-function setLast(sym,v){const x=parseFloat(v);if(x>0){S.pos[sym].last=x;save();render()}}
+function snap(){
+  let mv=0;for(const p of Object.values(S.pos))mv+=p.last*p.qty;
+  const pt={t:Date.now(),eq:S.cash+mv},h=S.hist,l=h[h.length-1];
+  if(l&&pt.t-l.t<60000)h[h.length-1]=pt;else h.push(pt);
+  if(h.length>2000)h.splice(1,h.length-2000);
+}
+function setLast(sym,v){const x=parseFloat(v);if(x>0){S.pos[sym].last=x;snap();save();render()}}
 function sellAllOf(sym){const p=S.pos[sym];$('sym').value=sym;$('qty').value=p.qty;$('price').value=p.last;$('kind').value=p.kind||'stock';window.scrollTo({top:0,behavior:'smooth'})}
 
 function render(){
@@ -148,6 +160,28 @@ function render(){
     <td class="l">${l.sym} ${esc(l.name||'')}</td><td>${l.price}</td><td>${fmt(l.qty)}</td><td>${fmt(l.fee)}</td><td>${fmt(l.tax)}</td>
     <td class="${cls(l.pnl)}">${l.pnl==null?'-':sgn(l.pnl)}</td></tr>`).join('')||'<tr><td class="l" colspan="8">尚無交易</td></tr>');
   $('cap').value=S.initial;$('disc').value=S.disc;
+  renderPerf();
+}
+function renderPerf(){
+  const sells=S.log.filter(l=>l.side==='sell'),w=sells.filter(l=>l.pnl>0),ls=sells.filter(l=>l.pnl<=0);
+  let peak=-Infinity,mdd=0;
+  for(const h of S.hist){peak=Math.max(peak,h.eq);mdd=Math.max(mdd,(peak-h.eq)/peak)}
+  const avg=a=>a.length?a.reduce((x,y)=>x+y.pnl,0)/a.length:0;
+  $('perf').innerHTML=[
+    ['交易筆數',S.log.length,''],
+    ['勝率',sells.length?(w.length/sells.length*100).toFixed(1)+'%':'-',''],
+    ['平均獲利',w.length?sgn(avg(w)):'-','up'],['平均虧損',ls.length?sgn(avg(ls)):'-','down'],
+    ['最大回撤',(mdd*100).toFixed(2)+'%','']
+  ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
+  const H=S.hist,W=600,Ht=180,pad=6;
+  const t0=H[0].t,t1=H[H.length-1].t||t0+1,span=Math.max(t1-t0,1);
+  const ys=H.map(h=>h.eq).concat(S.initial),lo=Math.min(...ys),hi=Math.max(...ys),r=Math.max(hi-lo,1);
+  const X=t=>pad+(t-t0)/span*(W-2*pad),Y=v=>Ht-pad-(v-lo)/r*(Ht-2*pad);
+  const pts=H.length>1?H.map(h=>X(h.t).toFixed(1)+','+Y(h.eq).toFixed(1)).join(' '):`${pad},${Y(H[0].eq)} ${W-pad},${Y(H[0].eq)}`;
+  const up=H[H.length-1].eq>=S.initial,col=up?'var(--up)':'var(--down)';
+  $('chart').innerHTML=`<line x1="${pad}" x2="${W-pad}" y1="${Y(S.initial)}" y2="${Y(S.initial)}" stroke="var(--line)" stroke-dasharray="4"/>
+  <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>
+  <text x="${pad}" y="12" font-size="11" fill="var(--sub)">${fmt(hi)}</text><text x="${pad}" y="${Ht-10}" font-size="11" fill="var(--sub)">${fmt(lo)}</text>`;
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -159,7 +193,7 @@ async function fetchPrices(){
     const r=await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
     const d=await r.json();let n=0;
     for(const x of d){const p=S.pos[x.Code];const c=parseFloat(x.ClosingPrice);if(p&&c>0){p.last=c;if(!p.name)p.name=x.Name;n++}}
-    save();render();msg(`已更新 ${n}/${syms.length} 檔(上市股票收盤價;上櫃請手動輸入)`);
+    snap();save();render();msg(`已更新 ${n}/${syms.length} 檔(上市股票收盤價;上櫃請手動輸入)`);
   }catch(e){msg('無法取得股價(可能被瀏覽器或網路擋下),請手動輸入現價',true)}
 }
 
