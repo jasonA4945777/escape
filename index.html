@@ -51,6 +51,7 @@ td input{width:90px;padding:3px 6px;text-align:right}
     <h2>下單</h2>
     <form id="orderForm">
       <div><label>股票代號</label><input id="sym" required placeholder="2330" inputmode="numeric"></div>
+      <div><button type="button" class="ghost" onclick="lookup()">查即時價</button></div>
       <div><label>名稱(選填)</label><input id="name" placeholder="台積電"></div>
       <div><label>價格</label><input id="price" type="number" step="0.01" min="0.01" required></div>
       <div><label>股數(1張=1000股)</label><input id="qty" type="number" step="1" min="1" required value="1000"></div>
@@ -64,14 +65,51 @@ td input{width:90px;padding:3px 6px;text-align:right}
   </div>
 
   <div class="card">
-    <h2>持股 <span class="hint">(現價可手動修改,或按「更新股價」從證交所抓收盤價)</span></h2>
-    <div class="tools" style="margin-bottom:8px"><button onclick="fetchPrices()">更新股價</button></div>
+    <h2>持股 <span class="hint">(現價可手動修改,或按「更新股價」抓即時報價)</span></h2>
+    <div class="tools" style="margin-bottom:8px;align-items:center"><button onclick="fetchPrices()">更新股價</button>
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="auto" style="width:auto" onchange="setAuto(this.checked)">盤中每 30 秒自動更新</label></div>
     <div class="scroll"><table id="pos"></table></div>
   </div>
 
   <div class="card">
     <h2>交易紀錄</h2>
     <div class="scroll"><table id="log"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>策略回測 <span class="hint">(用歷史日線模擬,含手續費與證交稅)</span></h2>
+    <form id="btForm" onsubmit="return false">
+      <div><label>股票代號</label><input id="btSym" value="0050"></div>
+      <div><label>期間(月)</label><input id="btMonths" type="number" min="2" max="60" value="24"></div>
+      <div><label>資金</label><input id="btCap" type="number" min="1000" value="1000000"></div>
+      <div><label>策略</label><select id="btStrat" onchange="btFields()">
+        <option value="ma">均線交叉</option><option value="dca">定期定額</option><option value="hold">買進持有</option></select></div>
+      <div class="bt-ma"><label>短均線(日)</label><input id="btShort" type="number" min="1" value="5"></div>
+      <div class="bt-ma"><label>長均線(日)</label><input id="btLong" type="number" min="2" value="20"></div>
+      <div class="bt-dca"><label>每月投入</label><input id="btDca" type="number" min="1" value="10000"></div>
+      <div class="bt-ma bt-dca"><label>停損 %(0=不用)</label><input id="btSL" type="number" min="0" step="0.5" value="0"></div>
+      <div class="bt-ma bt-dca"><label>停利 %(0=不用)</label><input id="btTP" type="number" min="0" step="0.5" value="0"></div>
+      <div><label>類型</label><select id="btKind"><option value="stock">一般股票</option><option value="etf">ETF</option></select></div>
+      <div><button onclick="runBacktest()">開始回測</button></div>
+    </form>
+    <div class="msg" id="btMsg"></div>
+    <div class="grid" id="btStats" style="margin:10px 0"></div>
+    <svg id="btChart" viewBox="0 0 600 180" style="width:100%;height:auto;display:block"></svg>
+    <div class="hint" id="btLegend"></div>
+    <details style="margin-top:8px"><summary class="hint">回測交易明細</summary><div class="scroll"><table id="btLog"></table></div></details>
+  </div>
+
+  <div class="card">
+    <h2>雲端同步與報價伺服器</h2>
+    <form onsubmit="return false">
+      <div style="grid-column:span 2"><label>Worker 網址</label><input id="cUrl" placeholder="https://tw-paper.xxx.workers.dev"></div>
+      <div><label>同步密碼</label><input id="cTok" type="password"></div>
+      <div><button class="ghost" onclick="saveCloud()">儲存並測試</button></div>
+      <div><button class="ghost" onclick="pushCloud(true)">上傳到雲端</button></div>
+      <div><button class="ghost" onclick="pullCloud(true)">從雲端下載</button></div>
+    </form>
+    <div class="msg" id="cMsg"></div>
+    <div class="hint">設定後每次變動會自動上傳;開啟頁面時若雲端版本較新會自動載入。網址與密碼只存在這台裝置的瀏覽器。</div>
   </div>
 
   <div class="card">
@@ -94,7 +132,7 @@ const fresh=cap=>({cash:cap,initial:cap,disc:1,pos:{},log:[],realized:0,hist:[{t
 let S=load();
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s.cash==='number'){if(!s.hist)s.hist=[{t:Date.now(),eq:s.initial}];return s}}catch(e){}return fresh(1000000)}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(fromCloud){if(!fromCloud)S.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(!fromCloud)schedulePush()}
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString('zh-TW');
 const cls=n=>n>0?'up':n<0?'down':'';
@@ -173,28 +211,156 @@ function renderPerf(){
     ['平均獲利',w.length?sgn(avg(w)):'-','up'],['平均虧損',ls.length?sgn(avg(ls)):'-','down'],
     ['最大回撤',(mdd*100).toFixed(2)+'%','']
   ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
-  const H=S.hist,W=600,Ht=180,pad=6;
-  const t0=H[0].t,t1=H[H.length-1].t||t0+1,span=Math.max(t1-t0,1);
-  const ys=H.map(h=>h.eq).concat(S.initial),lo=Math.min(...ys),hi=Math.max(...ys),r=Math.max(hi-lo,1);
+  const H=S.hist,last=H[H.length-1].eq;
+  drawChart($('chart'),[{pts:H.map(h=>({t:h.t,v:h.eq})),color:last>=S.initial?'var(--up)':'var(--down)'}],S.initial);
+}
+function drawChart(svg,series,base){
+  const W=600,Ht=180,pad=6,all=series.flatMap(x=>x.pts);
+  const t0=Math.min(...all.map(p=>p.t)),span=Math.max(Math.max(...all.map(p=>p.t))-t0,1);
+  const ys=all.map(p=>p.v).concat(base),lo=Math.min(...ys),hi=Math.max(...ys),r=Math.max(hi-lo,1);
   const X=t=>pad+(t-t0)/span*(W-2*pad),Y=v=>Ht-pad-(v-lo)/r*(Ht-2*pad);
-  const pts=H.length>1?H.map(h=>X(h.t).toFixed(1)+','+Y(h.eq).toFixed(1)).join(' '):`${pad},${Y(H[0].eq)} ${W-pad},${Y(H[0].eq)}`;
-  const up=H[H.length-1].eq>=S.initial,col=up?'var(--up)':'var(--down)';
-  $('chart').innerHTML=`<line x1="${pad}" x2="${W-pad}" y1="${Y(S.initial)}" y2="${Y(S.initial)}" stroke="var(--line)" stroke-dasharray="4"/>
-  <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>
-  <text x="${pad}" y="12" font-size="11" fill="var(--sub)">${fmt(hi)}</text><text x="${pad}" y="${Ht-10}" font-size="11" fill="var(--sub)">${fmt(lo)}</text>`;
+  const line=x=>{const P=x.pts.length>1?x.pts:[x.pts[0],{t:t0+span,v:x.pts[0].v}];
+    return `<polyline points="${P.map(p=>X(p.t).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ')}" fill="none" stroke="${x.color}" stroke-width="2"${x.dash?' stroke-dasharray="5 3"':''}/>`};
+  svg.innerHTML=`<line x1="${pad}" x2="${W-pad}" y1="${Y(base)}" y2="${Y(base)}" stroke="var(--line)" stroke-dasharray="4"/>`+series.map(line).join('')+
+  `<text x="${pad}" y="12" font-size="11" fill="var(--sub)">${fmt(hi)}</text><text x="${pad}" y="${Ht-10}" font-size="11" fill="var(--sub)">${fmt(lo)}</text>`;
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-async function fetchPrices(){
+const cloud=(()=>{try{return JSON.parse(localStorage.getItem('tw-paper-cloud'))||{}}catch(e){return{}}})();
+const api=path=>cloud.url?cloud.url.replace(/\/+$/,'')+path:null;
+
+async function getQuotes(codes){
+  if(api('/quote')){
+    const r=await fetch(api('/quote?codes='+codes.map(encodeURIComponent).join(',')));
+    const d=await r.json();if(!r.ok)throw new Error(d.error||r.status);return {live:true,q:d.quotes};
+  }
+  const r=await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+  const d=await r.json(),q={};
+  for(const x of d)if(codes.includes(x.Code)&&parseFloat(x.ClosingPrice)>0)q[x.Code]={name:x.Name,price:parseFloat(x.ClosingPrice)};
+  return {live:false,q};
+}
+async function fetchPrices(silent){
   const syms=Object.keys(S.pos);
-  if(!syms.length)return msg('沒有持股可更新');
-  msg('更新中…');
+  if(!syms.length){if(!silent)msg('沒有持股可更新');return}
+  if(!silent)msg('更新中…');
   try{
-    const r=await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
-    const d=await r.json();let n=0;
-    for(const x of d){const p=S.pos[x.Code];const c=parseFloat(x.ClosingPrice);if(p&&c>0){p.last=c;if(!p.name)p.name=x.Name;n++}}
-    snap();save();render();msg(`已更新 ${n}/${syms.length} 檔(上市股票收盤價;上櫃請手動輸入)`);
-  }catch(e){msg('無法取得股價(可能被瀏覽器或網路擋下),請手動輸入現價',true)}
+    const {live,q}=await getQuotes(syms);let n=0;
+    for(const [c,x] of Object.entries(q)){const p=S.pos[c];if(p){p.last=x.price;if(!p.name)p.name=x.name;n++}}
+    snap();save();render();
+    msg(`已更新 ${n}/${syms.length} 檔(${live?'即時報價 '+new Date().toLocaleTimeString('zh-TW',{hour12:false}):'證交所收盤價;設定 Worker 後可取得即時價'})`);
+  }catch(e){msg('無法取得股價:'+e.message+'(可手動輸入現價)',true)}
+}
+async function lookup(){
+  const c=$('sym').value.trim().toUpperCase();if(!c)return msg('請先輸入代號',true);
+  try{const {live,q}=await getQuotes([c]);const x=q[c];if(!x)return msg('查無此代號報價',true);
+    $('price').value=x.price;if(!$('name').value)$('name').value=x.name||'';
+    if(/^00/.test(c))$('kind').value='etf';
+    msg(`${c} ${x.name||''} ${live?'即時價':'收盤價'} ${x.price}`)}
+  catch(e){msg('查價失敗:'+e.message,true)}
+}
+let autoTimer=null;
+function tradingNow(){const d=new Date(Date.now()+8*3600e3),wd=d.getUTCDay(),m=d.getUTCHours()*60+d.getUTCMinutes();return wd>0&&wd<6&&m>=540&&m<=815}
+function setAuto(on){
+  clearInterval(autoTimer);autoTimer=null;
+  if(on){autoTimer=setInterval(()=>{if(tradingNow())fetchPrices(true)},30000);if(tradingNow())fetchPrices(true);else msg('目前非交易時段,開盤後(週一至五 9:00–13:35)會自動更新')}
+}
+
+// --- 雲端同步 ---
+function cmsg(t,err){const m=$('cMsg');m.textContent=t;m.className='msg'+(err?' err':'')}
+const authH=()=>({Authorization:'Bearer '+(cloud.token||''),'Content-Type':'application/json'});
+async function saveCloud(){
+  cloud.url=$('cUrl').value.trim();cloud.token=$('cTok').value;
+  try{localStorage.setItem('tw-paper-cloud',JSON.stringify(cloud))}catch(e){}
+  if(!cloud.url)return cmsg('已清除 Worker 設定');
+  try{const r=await fetch(api('/quote?codes=2330'));const d=await r.json();
+    cmsg(r.ok&&d.quotes&&d.quotes['2330']?`報價正常(2330 = ${d.quotes['2330'].price})`:'報價失敗:'+(d.error||r.status),!r.ok);
+    if(cloud.token)await pullCloud(true);
+  }catch(e){cmsg('連線失敗:'+e.message,true)}
+}
+let pushTimer=null;
+function schedulePush(){if(cloud.url&&cloud.token){clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushCloud(false),1500)}}
+async function pushCloud(manual){
+  if(!cloud.url||!cloud.token)return manual&&cmsg('請先填 Worker 網址與密碼',true);
+  try{const r=await fetch(api('/account'),{method:'PUT',headers:authH(),body:JSON.stringify(S)});const d=await r.json();
+    if(!r.ok)throw new Error(d.error||r.status);cmsg('已同步到雲端 '+new Date().toLocaleTimeString('zh-TW',{hour12:false}))}
+  catch(e){cmsg('上傳失敗:'+e.message,true)}
+}
+async function pullCloud(manual){
+  if(!cloud.url||!cloud.token)return manual&&cmsg('請先填 Worker 網址與密碼',true);
+  try{const r=await fetch(api('/account'),{headers:authH()});const d=await r.json();
+    if(!r.ok)throw new Error(d.error||r.status);
+    const a=d.account;
+    if(!a){cmsg('雲端還沒有資料,上傳目前帳戶…');return pushCloud(false)}
+    if(manual||(a.updated||0)>(S.updated||0)){
+      if(manual&&(S.updated||0)>(a.updated||0)&&!confirm('本機資料比雲端新,確定用雲端覆蓋本機?'))return;
+      S=a;if(!S.hist)S.hist=[{t:Date.now(),eq:S.initial}];save(true);render();cmsg('已從雲端載入');
+    }else if((S.updated||0)>(a.updated||0)){pushCloud(false)}else cmsg('已與雲端同步');
+  }catch(e){cmsg('下載失敗:'+e.message,true)}
+}
+
+// --- 策略回測 ---
+function btFields(){const v=$('btStrat').value;document.querySelectorAll('.bt-ma,.bt-dca').forEach(e=>e.style.display=e.classList.contains('bt-'+v)?'':'none')}
+function btmsg(t,err){const m=$('btMsg');m.textContent=t;m.className='msg'+(err?' err':'')}
+async function runBacktest(){
+  const code=$('btSym').value.trim().toUpperCase(),months=+$('btMonths').value;
+  if(!api('/history'))return btmsg('回測需要歷史資料,請先在下方設定 Worker 網址',true);
+  btmsg('下載歷史資料中…(第一次可能需要十幾秒)');
+  try{
+    const r=await fetch(api(`/history?code=${encodeURIComponent(code)}&months=${months}`));const d=await r.json();
+    if(!r.ok)throw new Error(d.error||r.status);
+    const res=backtest(d.rows,{strat:$('btStrat').value,cap:+$('btCap').value,short:+$('btShort').value,long:+$('btLong').value,
+      dca:+$('btDca').value,sl:+$('btSL').value/100,tp:+$('btTP').value/100,etf:$('btKind').value==='etf',disc:S.disc});
+    showBacktest(code,d.rows,res);
+  }catch(e){btmsg('回測失敗:'+e.message,true)}
+}
+// 每日以收盤價成交;資金全數投入時以「股」為單位(可零股)
+function backtest(rows,o){
+  const fe=a=>a>0?Math.max(20,Math.floor(a*0.001425*o.disc)):0,taxR=o.etf?0.001:0.003;
+  let cash=o.strat==='dca'?0:o.cap,sh=0,basis=0,invested=o.strat==='dca'?0:o.cap,lastMonth='';
+  const eq=[],trades=[],closes=rows.map(r=>r.close);
+  const ma=(n,i)=>i+1<n?null:closes.slice(i+1-n,i+1).reduce((a,b)=>a+b,0)/n;
+  const buy=(i,money,why)=>{const px=closes[i];let q=Math.floor(money/(px*1.001425));while(q>0&&px*q+fe(Math.round(px*q))>money)q--;if(q<=0)return;
+    const amt=Math.round(px*q),f=fe(amt);cash-=amt+f;sh+=q;basis+=amt+f;trades.push({date:rows[i].date,side:'buy',price:px,qty:q,why,pnl:null})};
+  const sell=(i,why)=>{if(!sh)return;const px=closes[i],amt=Math.round(px*sh),f=fe(amt),tax=Math.floor(amt*taxR),net=amt-f-tax;
+    trades.push({date:rows[i].date,side:'sell',price:px,qty:sh,why,pnl:net-basis});cash+=net;sh=0;basis=0};
+  for(let i=0;i<rows.length;i++){
+    const px=closes[i],m=rows[i].date.slice(0,7);
+    if(o.strat==='hold'){if(i===0)buy(i,cash,'買進持有')}
+    else if(o.strat==='dca'){
+      if(m!==lastMonth){cash+=o.dca;invested+=o.dca;buy(i,cash,'定期定額');}
+    }else{
+      const s0=ma(o.short,i-1),l0=ma(o.long,i-1),s1=ma(o.short,i),l1=ma(o.long,i);
+      if(s0!=null&&l0!=null){
+        if(!sh&&s0<=l0&&s1>l1)buy(i,cash,`黃金交叉 MA${o.short}>MA${o.long}`);
+        else if(sh&&s0>=l0&&s1<l1)sell(i,'死亡交叉');
+      }
+    }
+    if(sh&&o.strat!=='hold'){const ret=(px*sh)/basis-1;
+      if(o.sl&&ret<=-o.sl){sell(i,`停損 ${(ret*100).toFixed(1)}%`)}
+      else if(o.tp&&ret>=o.tp){sell(i,`停利 ${(ret*100).toFixed(1)}%`)}}
+    lastMonth=m;
+    eq.push({t:Date.parse(rows[i].date),v:cash+sh*px});
+  }
+  // 對照組:期初全部買進持有(定期定額則對照同額單筆投入)
+  const p0=closes[0],q0=Math.floor(invested/(p0*1.001425)),c0=invested-Math.round(p0*q0)-fe(Math.round(p0*q0));
+  const bench=rows.map(r=>({t:Date.parse(r.date),v:c0+q0*r.close}));
+  return {eq,bench,trades,invested};
+}
+function showBacktest(code,rows,{eq,bench,trades,invested}){
+  const fin=eq[eq.length-1].v,ret=fin/invested-1,bfin=bench[bench.length-1].v,bret=bfin/invested-1;
+  let peak=-Infinity,mdd=0;for(const p of eq){peak=Math.max(peak,p.v);if(peak>0)mdd=Math.max(mdd,(peak-p.v)/peak)}
+  const sells=trades.filter(t=>t.side==='sell'),wins=sells.filter(t=>t.pnl>0);
+  const yrs=(eq[eq.length-1].t-eq[0].t)/31557600000,cagr=yrs>0.2&&fin>0?Math.pow(fin/invested,1/yrs)-1:null;
+  $('btStats').innerHTML=[
+    ['投入本金',fmt(invested),''],['期末資產',fmt(fin),''],['策略報酬',(ret*100).toFixed(2)+'%',cls(ret)],
+    ['年化報酬',cagr==null?'-':(cagr*100).toFixed(2)+'%',cls(cagr||0)],['買進持有',(bret*100).toFixed(2)+'%',cls(bret)],
+    ['最大回撤',(mdd*100).toFixed(2)+'%',''],['交易次數',trades.length,''],['勝率',sells.length?(wins.length/sells.length*100).toFixed(1)+'%':'-','']
+  ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
+  drawChart($('btChart'),[{pts:bench,color:'var(--sub)',dash:true},{pts:eq,color:'var(--accent)'}],invested);
+  $('btLegend').innerHTML=`<span style="color:var(--accent)">━ 策略</span> <span>┅ 期初單筆買進持有</span> · ${rows[0].date} ~ ${rows[rows.length-1].date},${rows.length} 個交易日`;
+  $('btLog').innerHTML='<tr><th class="l">日期</th><th class="l">動作</th><th>價格</th><th>股數</th><th>損益</th></tr>'+
+    trades.map(t=>`<tr><td class="l">${t.date}</td><td class="l ${t.side==='buy'?'up':'down'}">${esc(t.why)}</td><td>${t.price}</td><td>${fmt(t.qty)}</td><td class="${cls(t.pnl)}">${t.pnl==null?'-':sgn(t.pnl)}</td></tr>`).join('');
+  btmsg(`${code} 回測完成`);
 }
 
 function saveSettings(){const d=parseFloat($('disc').value);if(d>=0&&d<=1){S.disc=d;save();msg('已儲存手續費折扣')}else msg('折扣需介於 0~1',true)}
@@ -213,7 +379,9 @@ $('imp').onchange=e=>{
   f.text().then(t=>{const s=JSON.parse(t);if(typeof s.cash!=='number'||!s.pos||!s.log)throw 0;S=s;save();render();msg('匯入成功')}).catch(()=>msg('檔案格式不正確',true));
   e.target.value=''
 };
-render();
+$('cUrl').value=cloud.url||'';$('cTok').value=cloud.token||'';
+btFields();render();
+if(cloud.url&&cloud.token)pullCloud(false);
 </script>
 </body>
 </html>
