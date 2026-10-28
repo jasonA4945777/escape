@@ -102,7 +102,7 @@ td input{width:90px;padding:3px 6px;text-align:right}
   <div class="card">
     <h2>雲端同步與報價伺服器</h2>
     <form onsubmit="return false">
-      <div style="grid-column:span 2"><label>Worker 網址</label><input id="cUrl" placeholder="https://tw-paper.xxx.workers.dev"></div>
+      <div style="grid-column:span 2"><label>Worker 網址</label><input id="cUrl" placeholder="從 Worker 網址開啟可留空"></div>
       <div><label>同步密碼</label><input id="cTok" type="password"></div>
       <div><button class="ghost" onclick="saveCloud()">儲存並測試</button></div>
       <div><button class="ghost" onclick="pushCloud(true)">上傳到雲端</button></div>
@@ -227,7 +227,9 @@ function drawChart(svg,series,base){
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const cloud=(()=>{try{return JSON.parse(localStorage.getItem('tw-paper-cloud'))||{}}catch(e){return{}}})();
-const api=path=>cloud.url?cloud.url.replace(/\/+$/,'')+path:null;
+// 頁面由 Worker 提供時(workers.dev 或自訂網域),預設使用同網址的 API
+const sameOrigin=/^https?:$/.test(location.protocol)&&!/github\.io$/.test(location.hostname)?location.origin:'';
+const api=path=>{const b=cloud.url||sameOrigin;return b?b.replace(/\/+$/,'')+path:null};
 
 async function getQuotes(codes){
   if(api('/quote')){
@@ -271,22 +273,22 @@ const authH=()=>({Authorization:'Bearer '+(cloud.token||''),'Content-Type':'appl
 async function saveCloud(){
   cloud.url=$('cUrl').value.trim();cloud.token=$('cTok').value;
   try{localStorage.setItem('tw-paper-cloud',JSON.stringify(cloud))}catch(e){}
-  if(!cloud.url)return cmsg('已清除 Worker 設定');
+  if(!api(''))return cmsg('已清除 Worker 設定');
   try{const r=await fetch(api('/quote?codes=2330'));const d=await r.json();
     cmsg(r.ok&&d.quotes&&d.quotes['2330']?`報價正常(2330 = ${d.quotes['2330'].price})`:'報價失敗:'+(d.error||r.status),!r.ok);
     if(cloud.token)await pullCloud(true);
   }catch(e){cmsg('連線失敗:'+e.message,true)}
 }
 let pushTimer=null;
-function schedulePush(){if(cloud.url&&cloud.token){clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushCloud(false),1500)}}
+function schedulePush(){if(api('')&&cloud.token){clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushCloud(false),1500)}}
 async function pushCloud(manual){
-  if(!cloud.url||!cloud.token)return manual&&cmsg('請先填 Worker 網址與密碼',true);
+  if(!api('')||!cloud.token)return manual&&cmsg('請先填同步密碼(非 Worker 網址開啟時也要填網址)',true);
   try{const r=await fetch(api('/account'),{method:'PUT',headers:authH(),body:JSON.stringify(S)});const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);cmsg('已同步到雲端 '+new Date().toLocaleTimeString('zh-TW',{hour12:false}))}
   catch(e){cmsg('上傳失敗:'+e.message,true)}
 }
 async function pullCloud(manual){
-  if(!cloud.url||!cloud.token)return manual&&cmsg('請先填 Worker 網址與密碼',true);
+  if(!api('')||!cloud.token)return manual&&cmsg('請先填同步密碼(非 Worker 網址開啟時也要填網址)',true);
   try{const r=await fetch(api('/account'),{headers:authH()});const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);
     const a=d.account;
@@ -381,7 +383,7 @@ $('imp').onchange=e=>{
 };
 $('cUrl').value=cloud.url||'';$('cTok').value=cloud.token||'';
 btFields();render();
-if(cloud.url&&cloud.token)pullCloud(false);
+if(api('')&&cloud.token)pullCloud(false);
 </script>
 </body>
 </html>

@@ -1,0 +1,13 @@
+name = "escape"
+main = "worker/src/index.js"
+compatibility_date = "2026-10-01"
+
+# 網頁靜態檔;找不到檔案的路徑(/quote、/history、/account)交給 Worker 處理
+[assets]
+directory = "./public"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "d4d6d758d14b4dc8a76001728f294f28"
+
+# 帳戶同步密碼請在 Cloudflare 後台 Settings → Variables and Secrets 新增 Secret「TOKEN」
