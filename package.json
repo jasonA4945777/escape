@@ -1,0 +1,7 @@
+{
+  "name": "tw-paper-trading",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test", "start": "node dev-server.mjs"},
+  "engines": {"node": ">=22"}
+}

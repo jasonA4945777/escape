@@ -37,10 +37,17 @@ td input{width:90px;padding:3px 6px;text-align:right}
 </head>
 <body>
 <div class="wrap">
-  <h1>📈 台股虛擬投資帳戶</h1>
+  <h1>📈 台股策略實驗室</h1><p class="hint">純模擬帳戶 · 無真實下單 · 報價可能延遲。先記錄規則，再觀察扣除成本後的結果。</p>
 
   <div class="card"><div class="grid" id="stats"></div></div>
 
+  <div class="card">
+    <h2>我的策略規則</h2>
+    <label for="plan">開始交易前，寫下選股、進出場、部位上限與檢驗期限</label>
+    <textarea id="plan" rows="3" maxlength="5000" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px" placeholder="例：只買股票型 ETF；MA5 上穿 MA20 後隔日觀察買進；單一部位最多30%；先追蹤三個月。"></textarea>
+    <button class="ghost" style="width:auto" onclick="S.plan=$('plan').value;save();msg('策略規則已儲存')">儲存策略規則</button>
+    <div class="hint">每筆買賣另填交易理由。勝率按賣出筆數計算，部分賣出不等於完整回合。回撤僅反映已記錄的估值點。</div>
+  </div>
   <div class="card">
     <h2>績效</h2>
     <div class="grid" id="perf" style="margin-bottom:10px"></div>
@@ -48,24 +55,25 @@ td input{width:90px;padding:3px 6px;text-align:right}
   </div>
 
   <div class="card">
-    <h2>下單</h2>
+    <h2>模擬下單</h2>
     <form id="orderForm">
-      <div><label>股票代號</label><input id="sym" required placeholder="2330" inputmode="numeric"></div>
-      <div><button type="button" class="ghost" onclick="lookup()">查即時價</button></div>
-      <div><label>名稱(選填)</label><input id="name" placeholder="台積電"></div>
-      <div><label>價格</label><input id="price" type="number" step="0.01" min="0.01" required></div>
-      <div><label>股數(1張=1000股)</label><input id="qty" type="number" step="1" min="1" required value="1000"></div>
+      <div><label for="sym">股票代號</label><input id="sym" required placeholder="2330" inputmode="numeric"></div>
+      <div><button type="button" class="ghost" onclick="lookup()">查報價</button></div>
+      <div><label for="name">名稱(選填)</label><input id="name" placeholder="台積電"></div>
+      <div><label for="price">價格</label><input id="price" type="number" step="0.01" min="0.01" required></div>
+      <div><label for="qty">股數(1張=1000股)</label><input id="qty" type="number" step="1" min="1" required value="1000"></div>
       <div><label>類型</label>
         <select id="kind"><option value="stock">一般股票(賣出稅0.3%)</option><option value="etf">ETF(賣出稅0.1%)</option></select></div>
+      <div><label for="reason">策略 / 交易理由</label><input id="reason" maxlength="500" placeholder="例如：MA5 上穿 MA20"></div>
       <div><button type="button" class="buy" onclick="trade('buy')">買進</button></div>
       <div><button type="button" class="sell" onclick="trade('sell')">賣出</button></div>
     </form>
     <div class="msg" id="msg"></div>
-    <div class="hint">手續費 0.1425%×折扣(低消 20 元);證交稅僅賣出時收取。買賣會依下方設定計算。</div>
+    <div class="hint">本模型手續費 0.1425%×折扣（最低 20 元，券商實際方案可能不同）。僅支援一般股票及股票型 ETF；未實作債券 ETF 免稅與當沖稅率。委託為手動價格模擬，非交易所撮合。</div>
   </div>
 
   <div class="card">
-    <h2>持股 <span class="hint">(現價可手動修改,或按「更新股價」抓即時報價)</span></h2>
+    <h2>持股 <span class="hint">(現價可手動修改,或按「更新股價」取得最新可用報價)</span></h2>
     <div class="tools" style="margin-bottom:8px;align-items:center"><button onclick="fetchPrices()">更新股價</button>
       <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="auto" style="width:auto" onchange="setAuto(this.checked)">盤中每 30 秒自動更新</label></div>
     <div class="scroll"><table id="pos"></table></div>
@@ -79,19 +87,21 @@ td input{width:90px;padding:3px 6px;text-align:right}
   <div class="card">
     <h2>策略回測 <span class="hint">(用歷史日線模擬,含手續費與證交稅)</span></h2>
     <form id="btForm" onsubmit="return false">
-      <div><label>股票代號</label><input id="btSym" value="0050"></div>
-      <div><label>期間(月)</label><input id="btMonths" type="number" min="2" max="60" value="24"></div>
-      <div><label>資金</label><input id="btCap" type="number" min="1000" value="1000000"></div>
-      <div><label>策略</label><select id="btStrat" onchange="btFields()">
-        <option value="ma">均線交叉</option><option value="dca">定期定額</option><option value="hold">買進持有</option></select></div>
-      <div class="bt-ma"><label>短均線(日)</label><input id="btShort" type="number" min="1" value="5"></div>
-      <div class="bt-ma"><label>長均線(日)</label><input id="btLong" type="number" min="2" value="20"></div>
-      <div class="bt-dca"><label>每月投入</label><input id="btDca" type="number" min="1" value="10000"></div>
-      <div class="bt-ma bt-dca"><label>停損 %(0=不用)</label><input id="btSL" type="number" min="0" step="0.5" value="0"></div>
-      <div class="bt-ma bt-dca"><label>停利 %(0=不用)</label><input id="btTP" type="number" min="0" step="0.5" value="0"></div>
-      <div><label>類型</label><select id="btKind"><option value="stock">一般股票</option><option value="etf">ETF</option></select></div>
+      <div><label for="btSym">股票代號</label><input id="btSym" value="0050"></div>
+      <div><label for="btMonths">期間(月)</label><input id="btMonths" type="number" min="2" max="60" value="6"></div>
+      <div><label for="btCap">資金</label><input id="btCap" type="number" min="1000" value="1000000"></div>
+      <div><label for="btStrat">策略</label><select id="btStrat" onchange="btFields()">
+        <option value="ma">均線交叉</option><option value="dca">定期定額（期初本金分批）</option><option value="hold">買進持有</option></select></div>
+      <div class="bt-ma"><label for="btShort">短均線(日)</label><input id="btShort" type="number" min="1" value="5"></div>
+      <div class="bt-ma"><label for="btLong">長均線(日)</label><input id="btLong" type="number" min="2" value="20"></div>
+      <div class="bt-dca"><label for="btDca">每月投入</label><input id="btDca" type="number" min="1" value="10000"></div>
+      <div class="bt-ma bt-dca"><label for="btSL">停損 %(0=不用)</label><input id="btSL" type="number" min="0" step="0.5" value="0"></div>
+      <div class="bt-ma bt-dca"><label for="btTP">停利 %(0=不用)</label><input id="btTP" type="number" min="0" step="0.5" value="0"></div>
+      <div><label for="btSlip">滑價（基點，10 = 0.1%）</label><input id="btSlip" type="number" min="0" max="100" value="10"></div>
+      <div><label for="btKind">類型</label><select id="btKind"><option value="stock">一般股票</option><option value="etf" selected>股票型 ETF</option></select></div>
       <div><button onclick="runBacktest()">開始回測</button></div>
     </form>
+    <div class="hint">均線與停損停利以收盤判斷，下一交易日開盤模擬成交；最後一天的訊號不成交。定期定額從期初本金分批投入，不另加資金；基準使用同筆本金。結果為未還原價格報酬，未計配息／除權息；不能單憑此結果認定策略有效。不模擬漲跌停、流動性或實際成交限制。</div>
     <div class="msg" id="btMsg"></div>
     <div class="grid" id="btStats" style="margin:10px 0"></div>
     <svg id="btChart" viewBox="0 0 600 180" style="width:100%;height:auto;display:block"></svg>
@@ -102,23 +112,24 @@ td input{width:90px;padding:3px 6px;text-align:right}
   <div class="card">
     <h2>雲端同步與報價伺服器</h2>
     <form onsubmit="return false">
-      <div style="grid-column:span 2"><label>Worker 網址</label><input id="cUrl" placeholder="從 Worker 網址開啟可留空"></div>
-      <div><label>同步密碼</label><input id="cTok" type="password"></div>
+      <div style="grid-column:span 2"><label for="cUrl">Worker 網址</label><input id="cUrl" placeholder="從 Worker 網址開啟可留空"></div>
+      <div><label for="cTok">同步密碼</label><input id="cTok" type="password"></div>
       <div><button class="ghost" onclick="saveCloud()">儲存並測試</button></div>
       <div><button class="ghost" onclick="pushCloud(true)">上傳到雲端</button></div>
       <div><button class="ghost" onclick="pullCloud(true)">從雲端下載</button></div>
     </form>
     <div class="msg" id="cMsg"></div>
-    <div class="hint">設定後每次變動會自動上傳;開啟頁面時若雲端版本較新會自動載入。網址與密碼只存在這台裝置的瀏覽器。</div>
+    <div class="hint">雲端採手動上傳／下載，避免多裝置自動覆蓋。下載會先確認，並保留本機復原備份。同步密碼僅保留在目前分頁；網址會存在本機。</div>
   </div>
 
   <div class="card">
     <h2>帳戶設定</h2>
     <form id="setForm" onsubmit="return false">
-      <div><label>初始資金(重置時套用)</label><input id="cap" type="number" min="1" value="1000000"></div>
-      <div><label>手續費折扣(例:0.6=六折)</label><input id="disc" type="number" step="0.01" min="0" max="1" value="1"></div>
+      <div><label for="cap">初始資金(重置時套用)</label><input id="cap" type="number" min="1" value="1000000"></div>
+      <div><label for="disc">手續費折扣(例:0.6=六折)</label><input id="disc" type="number" step="0.01" min="0" max="1" value="1"></div>
       <div><button class="ghost" onclick="saveSettings()">儲存折扣</button></div>
       <div><button class="ghost" onclick="resetAcct()">重置帳戶</button></div>
+      <div><button class="ghost" onclick="restoreBackup()">復原上次覆蓋前帳戶</button></div>
       <div><button class="ghost" onclick="exportData()">匯出 JSON</button></div>
       <div><button class="ghost" onclick="document.getElementById('imp').click()">匯入 JSON</button></div>
     </form>
@@ -126,13 +137,15 @@ td input{width:90px;padding:3px 6px;text-align:right}
   </div>
 </div>
 
+<script src="core.js"></script>
 <script>
 const KEY='tw-paper-account-v1';
+let loadWarning='';
 const fresh=cap=>({cash:cap,initial:cap,disc:1,pos:{},log:[],realized:0,hist:[{t:Date.now(),eq:cap}]});
 let S=load();
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s.cash==='number'){if(!s.hist)s.hist=[{t:Date.now(),eq:s.initial}];return s}}catch(e){}return fresh(1000000)}
-function save(fromCloud){if(!fromCloud)S.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(!fromCloud)schedulePush()}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s){if(!s.hist)s.hist=[{t:Date.now(),eq:s.initial}];return PaperCore.validateAccount(s)}}catch(e){loadWarning='本機帳戶格式異常，已保留原始備份；目前顯示新帳戶。';try{localStorage.setItem(KEY+'-invalid',localStorage.getItem(KEY))}catch{}}return fresh(1000000)}
+function save(fromCloud){if(!fromCloud)S.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('無法儲存至瀏覽器，請立即匯出 JSON 備份',true)}}
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString('zh-TW');
 const cls=n=>n>0?'up':n<0?'down':'';
@@ -141,10 +154,11 @@ const fee=amt=>Math.max(20,Math.floor(amt*0.001425*S.disc));
 function msg(t,err){const m=$('msg');m.textContent=t;m.className='msg'+(err?' err':'')}
 
 function trade(side){
-  const sym=$('sym').value.trim(),price=parseFloat($('price').value),qty=parseInt($('qty').value,10);
-  if(!sym||!(price>0)||!(qty>0))return msg('請填寫完整的代號、價格與股數',true);
+  const sym=$('sym').value.trim().toUpperCase(),price=Number($('price').value),qty=Number($('qty').value),reason=$('reason').value.trim();
+  if(!PaperCore.CODE.test(sym)||!Number.isFinite(price)||!(price>0)||!Number.isSafeInteger(qty)||!(qty>0)||!Number.isSafeInteger(Math.round(price*qty)))return msg('請填寫完整的代號、價格與股數',true);
   const amt=Math.round(price*qty),f=fee(amt);
   let p=S.pos[sym];
+  if(p&&p.kind!==$('kind').value)return msg('類型與既有持股不同，請確認股票／ETF選項',true);
   if(side==='buy'){
     const cost=amt+f;
     if(cost>S.cash)return msg(`現金不足:需要 ${fmt(cost)},目前 ${fmt(S.cash)}`,true);
@@ -152,15 +166,16 @@ function trade(side){
     if(!p)p=S.pos[sym]={name:$('name').value.trim(),qty:0,cost:0,last:price,kind:$('kind').value};
     if($('name').value.trim())p.name=$('name').value.trim();
     p.qty+=qty;p.cost+=cost;p.last=price;p.kind=$('kind').value;
-    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax:0,pnl:null});
+    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax:0,pnl:null,reason});
     msg(`已買進 ${sym} ${fmt(qty)} 股,成本 ${fmt(cost)}`);
   }else{
     if(!p||p.qty<qty)return msg(`持股不足:${sym} 目前 ${p?fmt(p.qty):0} 股`,true);
-    const tax=Math.floor(amt*(($('kind').value==='etf'||p.kind==='etf')?0.001:0.003));
+    const tax=Math.floor(amt*(p.kind==='etf'?0.001:0.003));
     const net=amt-f-tax,basis=p.cost*qty/p.qty,pnl=net-basis;
+    if(S.cash+net<0)return msg('賣出金額不足支付最低手續費，且現金不足',true);
     S.cash+=net;S.realized+=pnl;p.cost-=basis;p.qty-=qty;p.last=price;
     if(p.qty===0)delete S.pos[sym];
-    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax,pnl});
+    S.log.unshift({t:Date.now(),side,sym,name:p.name,price,qty,fee:f,tax,pnl,reason});
     msg(`已賣出 ${sym} ${fmt(qty)} 股,實現損益 ${sgn(pnl)}`);
   }
   snap();save();render();
@@ -169,10 +184,10 @@ function trade(side){
 function snap(){
   let mv=0;for(const p of Object.values(S.pos))mv+=p.last*p.qty;
   const pt={t:Date.now(),eq:S.cash+mv},h=S.hist,l=h[h.length-1];
-  if(l&&pt.t-l.t<60000)h[h.length-1]=pt;else h.push(pt);
+  if(h.length>1&&l&&pt.t-l.t<60000)h[h.length-1]=pt;else h.push(pt);
   if(h.length>2000)h.splice(1,h.length-2000);
 }
-function setLast(sym,v){const x=parseFloat(v);if(x>0){S.pos[sym].last=x;snap();save();render()}}
+function setLast(sym,v){const x=parseFloat(v);if(Number.isFinite(x)&&x>0){S.pos[sym].last=x;S.pos[sym].quoteLabel='手動模擬價格';snap();save();render()}}
 function sellAllOf(sym){const p=S.pos[sym];$('sym').value=sym;$('qty').value=p.qty;$('price').value=p.last;$('kind').value=p.kind||'stock';window.scrollTo({top:0,behavior:'smooth'})}
 
 function render(){
@@ -188,16 +203,16 @@ function render(){
   const rows=Object.entries(S.pos).map(([sym,p])=>{
     const v=p.last*p.qty,u=v-p.cost;
     return `<tr><td class="l">${sym} ${esc(p.name||'')}</td><td>${fmt(p.qty)}</td><td>${(p.cost/p.qty).toFixed(2)}</td>
-    <td><input type="number" step="0.01" value="${p.last}" onchange="setLast('${sym}',this.value)"></td>
+    <td><input type="number" step="0.01" value="${p.last}" onchange="setLast('${sym}',this.value)"><div class="hint">${esc(p.quoteLabel||'手動模擬價格')}</div></td>
     <td>${fmt(v)}</td><td class="${cls(u)}">${sgn(u)}</td><td class="${cls(u)}">${(u/p.cost*100).toFixed(2)}%</td>
     <td><button class="ghost" style="padding:3px 8px" onclick="sellAllOf('${sym}')">帶入賣出</button></td></tr>`}).join('');
   $('pos').innerHTML=`<tr><th class="l">股票</th><th>股數</th><th>均價(含費)</th><th>現價</th><th>市值</th><th>損益</th><th>報酬率</th><th></th></tr>`+(rows||'<tr><td class="l" colspan="8">目前沒有持股</td></tr>');
 
-  $('log').innerHTML=`<tr><th class="l">時間</th><th class="l">買/賣</th><th class="l">股票</th><th>價格</th><th>股數</th><th>手續費</th><th>證交稅</th><th>實現損益</th></tr>`+
+  $('log').innerHTML=`<tr><th class="l">時間</th><th class="l">買/賣</th><th class="l">股票</th><th>價格</th><th>股數</th><th>手續費</th><th>證交稅</th><th>實現損益</th><th class="l">策略 / 理由</th></tr>`+
     (S.log.map(l=>`<tr><td class="l">${new Date(l.t).toLocaleString('zh-TW',{hour12:false})}</td><td class="l ${l.side==='buy'?'up':'down'}">${l.side==='buy'?'買進':'賣出'}</td>
     <td class="l">${l.sym} ${esc(l.name||'')}</td><td>${l.price}</td><td>${fmt(l.qty)}</td><td>${fmt(l.fee)}</td><td>${fmt(l.tax)}</td>
-    <td class="${cls(l.pnl)}">${l.pnl==null?'-':sgn(l.pnl)}</td></tr>`).join('')||'<tr><td class="l" colspan="8">尚無交易</td></tr>');
-  $('cap').value=S.initial;$('disc').value=S.disc;
+    <td class="${cls(l.pnl)}">${l.pnl==null?'-':sgn(l.pnl)}</td><td class="l">${esc(l.reason||'—')}</td></tr>`).join('')||'<tr><td class="l" colspan="8">尚無交易</td></tr>');
+  $('cap').value=S.initial;$('disc').value=S.disc;$('plan').value=S.plan||'';
   renderPerf();
 }
 function renderPerf(){
@@ -207,9 +222,9 @@ function renderPerf(){
   const avg=a=>a.length?a.reduce((x,y)=>x+y.pnl,0)/a.length:0;
   $('perf').innerHTML=[
     ['交易筆數',S.log.length,''],
-    ['勝率',sells.length?(w.length/sells.length*100).toFixed(1)+'%':'-',''],
+    ['賣出筆數勝率',sells.length?(w.length/sells.length*100).toFixed(1)+'%':'-',''],
     ['平均獲利',w.length?sgn(avg(w)):'-','up'],['平均虧損',ls.length?sgn(avg(ls)):'-','down'],
-    ['最大回撤',(mdd*100).toFixed(2)+'%','']
+    ['紀錄點最大回撤',(mdd*100).toFixed(2)+'%','']
   ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
   const H=S.hist,last=H[H.length-1].eq;
   drawChart($('chart'),[{pts:H.map(h=>({t:h.t,v:h.eq})),color:last>=S.initial?'var(--up)':'var(--down)'}],S.initial);
@@ -226,7 +241,7 @@ function drawChart(svg,series,base){
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const cloud=(()=>{try{return JSON.parse(localStorage.getItem('tw-paper-cloud'))||{}}catch(e){return{}}})();
+const cloud=(()=>{try{const c=JSON.parse(localStorage.getItem('tw-paper-cloud'))||{};delete c.token;localStorage.setItem('tw-paper-cloud',JSON.stringify(c));return c}catch(e){return{}}})();
 // 頁面由 Worker 提供時(workers.dev 或自訂網域),預設使用同網址的 API
 const sameOrigin=/^https?:$/.test(location.protocol)&&!/github\.io$/.test(location.hostname)?location.origin:'';
 const api=path=>{const b=cloud.url||sameOrigin;return b?b.replace(/\/+$/,'')+path:null};
@@ -247,17 +262,17 @@ async function fetchPrices(silent){
   if(!silent)msg('更新中…');
   try{
     const {live,q}=await getQuotes(syms);let n=0;
-    for(const [c,x] of Object.entries(q)){const p=S.pos[c];if(p){p.last=x.price;if(!p.name)p.name=x.name;n++}}
+    for(const [c,x] of Object.entries(q)){const p=S.pos[c];if(p&&Number.isFinite(x.price)&&x.price>0){p.last=x.price;p.quoteLabel=[x.source||'收盤價',x.date||'日期未提供',x.tradeTime||''].join(' ');if(!p.name)p.name=x.name;n++}}
     snap();save();render();
-    msg(`已更新 ${n}/${syms.length} 檔(${live?'即時報價 '+new Date().toLocaleTimeString('zh-TW',{hour12:false}):'證交所收盤價;設定 Worker 後可取得即時價'})`);
+    msg(`已更新 ${n}/${syms.length} 檔(${live?'最新可用行情；非保證即時':'證交所收盤資料'})`);
   }catch(e){msg('無法取得股價:'+e.message+'(可手動輸入現價)',true)}
 }
 async function lookup(){
   const c=$('sym').value.trim().toUpperCase();if(!c)return msg('請先輸入代號',true);
   try{const {live,q}=await getQuotes([c]);const x=q[c];if(!x)return msg('查無此代號報價',true);
     $('price').value=x.price;if(!$('name').value)$('name').value=x.name||'';
-    if(/^00/.test(c))$('kind').value='etf';
-    msg(`${c} ${x.name||''} ${live?'即時價':'收盤價'} ${x.price}`)}
+    $('kind').value=/^00/.test(c)?'etf':'stock';
+    msg(`${c} ${x.name||''} ${x.source||'收盤價'} ${x.price} · ${x.date||'日期未提供'} ${x.tradeTime||''}（僅供模擬參考）`)}
   catch(e){msg('查價失敗:'+e.message,true)}
 }
 let autoTimer=null;
@@ -271,19 +286,20 @@ function setAuto(on){
 function cmsg(t,err){const m=$('cMsg');m.textContent=t;m.className='msg'+(err?' err':'')}
 const authH=()=>({Authorization:'Bearer '+(cloud.token||''),'Content-Type':'application/json'});
 async function saveCloud(){
-  cloud.url=$('cUrl').value.trim();cloud.token=$('cTok').value;
-  try{localStorage.setItem('tw-paper-cloud',JSON.stringify(cloud))}catch(e){}
+  const url=$('cUrl').value.trim();
+  if(url&&!/^https:\/\//.test(url)&&!/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url))return cmsg('伺服器需使用 HTTPS',true);
+  cloud.url=url;cloud.token=$('cTok').value;
+  try{localStorage.setItem('tw-paper-cloud',JSON.stringify({url:cloud.url}))}catch(e){}
   if(!api(''))return cmsg('已清除 Worker 設定');
   try{const r=await fetch(api('/quote?codes=2330'));const d=await r.json();
     cmsg(r.ok&&d.quotes&&d.quotes['2330']?`報價正常(2330 = ${d.quotes['2330'].price})`:'報價失敗:'+(d.error||r.status),!r.ok);
-    if(cloud.token)await pullCloud(true);
+
   }catch(e){cmsg('連線失敗:'+e.message,true)}
 }
-let pushTimer=null;
-function schedulePush(){if(api('')&&cloud.token){clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushCloud(false),1500)}}
 async function pushCloud(manual){
   if(!api('')||!cloud.token)return manual&&cmsg('請先填同步密碼(非 Worker 網址開啟時也要填網址)',true);
-  try{const r=await fetch(api('/account'),{method:'PUT',headers:authH(),body:JSON.stringify(S)});const d=await r.json();
+  if(!confirm('上傳會取代雲端帳戶，請確認沒有其他裝置正在編輯。繼續上傳？'))return;
+  try{PaperCore.validateAccount(S);const r=await fetch(api('/account'),{method:'PUT',headers:authH(),body:JSON.stringify(S)});const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);cmsg('已同步到雲端 '+new Date().toLocaleTimeString('zh-TW',{hour12:false}))}
   catch(e){cmsg('上傳失敗:'+e.message,true)}
 }
@@ -292,98 +308,73 @@ async function pullCloud(manual){
   try{const r=await fetch(api('/account'),{headers:authH()});const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);
     const a=d.account;
-    if(!a){cmsg('雲端還沒有資料,上傳目前帳戶…');return pushCloud(false)}
+    if(!a)return cmsg('雲端尚無帳戶，可手動上傳目前帳戶');
+    PaperCore.validateAccount(a);
+    if(!confirm('以雲端帳戶取代本機？目前帳戶會先保留復原備份。'))return;
+    localStorage.setItem(KEY+'-before-restore',JSON.stringify(S));
     if(manual||(a.updated||0)>(S.updated||0)){
       if(manual&&(S.updated||0)>(a.updated||0)&&!confirm('本機資料比雲端新,確定用雲端覆蓋本機?'))return;
       S=a;if(!S.hist)S.hist=[{t:Date.now(),eq:S.initial}];save(true);render();cmsg('已從雲端載入');
-    }else if((S.updated||0)>(a.updated||0)){pushCloud(false)}else cmsg('已與雲端同步');
+    }else if((S.updated||0)>(a.updated||0)){cmsg('本機較新，請手動選擇上傳')}else cmsg('已與雲端同步');
   }catch(e){cmsg('下載失敗:'+e.message,true)}
 }
 
 // --- 策略回測 ---
 function btFields(){const v=$('btStrat').value;document.querySelectorAll('.bt-ma,.bt-dca').forEach(e=>e.style.display=e.classList.contains('bt-'+v)?'':'none')}
 function btmsg(t,err){const m=$('btMsg');m.textContent=t;m.className='msg'+(err?' err':'')}
+let backtestBusy=false;
 async function runBacktest(){
+  if(backtestBusy)return;
   const code=$('btSym').value.trim().toUpperCase(),months=+$('btMonths').value;
   if(!api('/history'))return btmsg('回測需要歷史資料,請先在下方設定 Worker 網址',true);
-  btmsg('下載歷史資料中…(第一次可能需要十幾秒)');
+  backtestBusy=true;btmsg('下載歷史資料中…(第一次可能需要十幾秒)');
   try{
     const r=await fetch(api(`/history?code=${encodeURIComponent(code)}&months=${months}`));const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);
     const res=backtest(d.rows,{strat:$('btStrat').value,cap:+$('btCap').value,short:+$('btShort').value,long:+$('btLong').value,
-      dca:+$('btDca').value,sl:+$('btSL').value/100,tp:+$('btTP').value/100,etf:$('btKind').value==='etf',disc:S.disc});
+      dca:+$('btDca').value,sl:+$('btSL').value/100,tp:+$('btTP').value/100,etf:$('btKind').value==='etf',disc:S.disc,slip:+$('btSlip').value});
     showBacktest(code,d.rows,res);
-  }catch(e){btmsg('回測失敗:'+e.message,true)}
+    if(d.warnings?.length)btmsg($('btMsg').textContent+' '+d.warnings.join('；'),true);
+  }catch(e){$('btStats').innerHTML='';$('btChart').innerHTML='';$('btLog').innerHTML='';$('btLegend').textContent='';btmsg('回測失敗:'+e.message,true)}finally{backtestBusy=false}
 }
-// 每日以收盤價成交;資金全數投入時以「股」為單位(可零股)
-function backtest(rows,o){
-  const fe=a=>a>0?Math.max(20,Math.floor(a*0.001425*o.disc)):0,taxR=o.etf?0.001:0.003;
-  let cash=o.strat==='dca'?0:o.cap,sh=0,basis=0,invested=o.strat==='dca'?0:o.cap,lastMonth='';
-  const eq=[],trades=[],closes=rows.map(r=>r.close);
-  const ma=(n,i)=>i+1<n?null:closes.slice(i+1-n,i+1).reduce((a,b)=>a+b,0)/n;
-  const buy=(i,money,why)=>{const px=closes[i];let q=Math.floor(money/(px*1.001425));while(q>0&&px*q+fe(Math.round(px*q))>money)q--;if(q<=0)return;
-    const amt=Math.round(px*q),f=fe(amt);cash-=amt+f;sh+=q;basis+=amt+f;trades.push({date:rows[i].date,side:'buy',price:px,qty:q,why,pnl:null})};
-  const sell=(i,why)=>{if(!sh)return;const px=closes[i],amt=Math.round(px*sh),f=fe(amt),tax=Math.floor(amt*taxR),net=amt-f-tax;
-    trades.push({date:rows[i].date,side:'sell',price:px,qty:sh,why,pnl:net-basis});cash+=net;sh=0;basis=0};
-  for(let i=0;i<rows.length;i++){
-    const px=closes[i],m=rows[i].date.slice(0,7);
-    if(o.strat==='hold'){if(i===0)buy(i,cash,'買進持有')}
-    else if(o.strat==='dca'){
-      if(m!==lastMonth){cash+=o.dca;invested+=o.dca;buy(i,cash,'定期定額');}
-    }else{
-      const s0=ma(o.short,i-1),l0=ma(o.long,i-1),s1=ma(o.short,i),l1=ma(o.long,i);
-      if(s0!=null&&l0!=null){
-        if(!sh&&s0<=l0&&s1>l1)buy(i,cash,`黃金交叉 MA${o.short}>MA${o.long}`);
-        else if(sh&&s0>=l0&&s1<l1)sell(i,'死亡交叉');
-      }
-    }
-    if(sh&&o.strat!=='hold'){const ret=(px*sh)/basis-1;
-      if(o.sl&&ret<=-o.sl){sell(i,`停損 ${(ret*100).toFixed(1)}%`)}
-      else if(o.tp&&ret>=o.tp){sell(i,`停利 ${(ret*100).toFixed(1)}%`)}}
-    lastMonth=m;
-    eq.push({t:Date.parse(rows[i].date),v:cash+sh*px});
-  }
-  // 對照組:期初全部買進持有(定期定額則對照同額單筆投入)
-  const p0=closes[0],q0=Math.floor(invested/(p0*1.001425)),c0=invested-Math.round(p0*q0)-fe(Math.round(p0*q0));
-  const bench=rows.map(r=>({t:Date.parse(r.date),v:c0+q0*r.close}));
-  return {eq,bench,trades,invested};
-}
-function showBacktest(code,rows,{eq,bench,trades,invested}){
+const backtest=PaperCore.backtest;
+function showBacktest(code,rows,{eq,bench,trades,invested,pending}){
   const fin=eq[eq.length-1].v,ret=fin/invested-1,bfin=bench[bench.length-1].v,bret=bfin/invested-1;
   let peak=-Infinity,mdd=0;for(const p of eq){peak=Math.max(peak,p.v);if(peak>0)mdd=Math.max(mdd,(peak-p.v)/peak)}
   const sells=trades.filter(t=>t.side==='sell'),wins=sells.filter(t=>t.pnl>0);
   const yrs=(eq[eq.length-1].t-eq[0].t)/31557600000,cagr=yrs>0.2&&fin>0?Math.pow(fin/invested,1/yrs)-1:null;
   $('btStats').innerHTML=[
     ['投入本金',fmt(invested),''],['期末資產',fmt(fin),''],['策略報酬',(ret*100).toFixed(2)+'%',cls(ret)],
-    ['年化報酬',cagr==null?'-':(cagr*100).toFixed(2)+'%',cls(cagr||0)],['買進持有',(bret*100).toFixed(2)+'%',cls(bret)],
-    ['最大回撤',(mdd*100).toFixed(2)+'%',''],['交易次數',trades.length,''],['勝率',sells.length?(wins.length/sells.length*100).toFixed(1)+'%':'-','']
+    ['年化報酬',cagr==null?'-':(cagr*100).toFixed(2)+'%',cls(cagr||0)],['買進持有',(bret*100).toFixed(2)+'%',cls(bret)],['超越基準',((ret-bret)*100).toFixed(2)+' 百分點',cls(ret-bret)],
+    ['最大回撤',(mdd*100).toFixed(2)+'%',''],['交易次數',trades.length,''],['賣出筆數勝率',sells.length?(wins.length/sells.length*100).toFixed(1)+'%':'-','']
   ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
   drawChart($('btChart'),[{pts:bench,color:'var(--sub)',dash:true},{pts:eq,color:'var(--accent)'}],invested);
   $('btLegend').innerHTML=`<span style="color:var(--accent)">━ 策略</span> <span>┅ 期初單筆買進持有</span> · ${rows[0].date} ~ ${rows[rows.length-1].date},${rows.length} 個交易日`;
   $('btLog').innerHTML='<tr><th class="l">日期</th><th class="l">動作</th><th>價格</th><th>股數</th><th>損益</th></tr>'+
     trades.map(t=>`<tr><td class="l">${t.date}</td><td class="l ${t.side==='buy'?'up':'down'}">${esc(t.why)}</td><td>${t.price}</td><td>${fmt(t.qty)}</td><td class="${cls(t.pnl)}">${t.pnl==null?'-':sgn(t.pnl)}</td></tr>`).join('');
-  btmsg(`${code} 回測完成`);
+  btmsg(`${code} 回測完成${pending?'；最後一日訊號尚未成交':''}。期末持股按收盤市值計價，尚未扣未執行的賣出成本。`);
 }
 
 function saveSettings(){const d=parseFloat($('disc').value);if(d>=0&&d<=1){S.disc=d;save();msg('已儲存手續費折扣')}else msg('折扣需介於 0~1',true)}
 function resetAcct(){
   const cap=parseFloat($('cap').value);
-  if(!(cap>0))return msg('初始資金需大於 0',true);
-  if(!confirm(`確定重置?所有持股與紀錄會清空,資金重設為 ${fmt(cap)}。`))return;
-  const d=S.disc;S=fresh(cap);S.disc=d;save();render();msg('帳戶已重置')
+  if(!Number.isFinite(cap)||!(cap>0))return msg('初始資金需大於 0',true);
+  if(!confirm(`確定重置?所有持股與紀錄會清空（先保留復原備份）,資金重設為 ${fmt(cap)}。`))return;
+  localStorage.setItem(KEY+'-before-restore',JSON.stringify(S));const d=S.disc;S=fresh(cap);S.disc=d;save();render();msg('帳戶已重置')
 }
+function restoreBackup(){try{const b=PaperCore.validateAccount(JSON.parse(localStorage.getItem(KEY+'-before-restore')));if(!confirm('使用上次覆蓋前的備份取代目前帳戶？'))return;localStorage.setItem(KEY+'-before-restore',JSON.stringify(S));S=b;save();render();msg('已復原備份')}catch(e){msg('沒有可用的復原備份',true)}}
 function exportData(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
   a.download='tw-paper-account.json';a.click();URL.revokeObjectURL(a.href)
 }
 $('imp').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{const s=JSON.parse(t);if(typeof s.cash!=='number'||!s.pos||!s.log)throw 0;S=s;save();render();msg('匯入成功')}).catch(()=>msg('檔案格式不正確',true));
+  f.text().then(t=>{const s=JSON.parse(t);PaperCore.validateAccount(s);if(!confirm('匯入將取代目前帳戶；先保留復原備份。是否繼續？'))return;localStorage.setItem(KEY+'-before-restore',JSON.stringify(S));S=s;save();render();msg('匯入成功')}).catch(()=>msg('檔案格式不正確',true));
   e.target.value=''
 };
 $('cUrl').value=cloud.url||'';$('cTok').value=cloud.token||'';
-btFields();render();
-if(api('')&&cloud.token)pullCloud(false);
+btFields();render();if(loadWarning)msg(loadWarning,true);
+// Explicit manual sync avoids startup overwrites.
 </script>
 </body>
 </html>
