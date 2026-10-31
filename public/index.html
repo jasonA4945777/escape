@@ -85,31 +85,6 @@ td input{width:90px;padding:3px 6px;text-align:right}
   </div>
 
   <div class="card">
-    <h2>策略回測 <span class="hint">(用歷史日線模擬,含手續費與證交稅)</span></h2>
-    <form id="btForm" onsubmit="return false">
-      <div><label for="btSym">股票代號</label><input id="btSym" value="0050"></div>
-      <div><label for="btMonths">期間(月)</label><input id="btMonths" type="number" min="2" max="60" value="6"></div>
-      <div><label for="btCap">資金</label><input id="btCap" type="number" min="1000" value="1000000"></div>
-      <div><label for="btStrat">策略</label><select id="btStrat" onchange="btFields()">
-        <option value="ma">均線交叉</option><option value="dca">定期定額（期初本金分批）</option><option value="hold">買進持有</option></select></div>
-      <div class="bt-ma"><label for="btShort">短均線(日)</label><input id="btShort" type="number" min="1" value="5"></div>
-      <div class="bt-ma"><label for="btLong">長均線(日)</label><input id="btLong" type="number" min="2" value="20"></div>
-      <div class="bt-dca"><label for="btDca">每月投入</label><input id="btDca" type="number" min="1" value="10000"></div>
-      <div class="bt-ma bt-dca"><label for="btSL">停損 %(0=不用)</label><input id="btSL" type="number" min="0" step="0.5" value="0"></div>
-      <div class="bt-ma bt-dca"><label for="btTP">停利 %(0=不用)</label><input id="btTP" type="number" min="0" step="0.5" value="0"></div>
-      <div><label for="btSlip">滑價（基點，10 = 0.1%）</label><input id="btSlip" type="number" min="0" max="100" value="10"></div>
-      <div><label for="btKind">類型</label><select id="btKind"><option value="stock">一般股票</option><option value="etf" selected>股票型 ETF</option></select></div>
-      <div><button onclick="runBacktest()">開始回測</button></div>
-    </form>
-    <div class="hint">均線與停損停利以收盤判斷，下一交易日開盤模擬成交；最後一天的訊號不成交。定期定額從期初本金分批投入，不另加資金；基準使用同筆本金。結果為未還原價格報酬，未計配息／除權息；不能單憑此結果認定策略有效。不模擬漲跌停、流動性或實際成交限制。</div>
-    <div class="msg" id="btMsg"></div>
-    <div class="grid" id="btStats" style="margin:10px 0"></div>
-    <svg id="btChart" viewBox="0 0 600 180" style="width:100%;height:auto;display:block"></svg>
-    <div class="hint" id="btLegend"></div>
-    <details style="margin-top:8px"><summary class="hint">回測交易明細</summary><div class="scroll"><table id="btLog"></table></div></details>
-  </div>
-
-  <div class="card">
     <h2>雲端同步與報價伺服器</h2>
     <form onsubmit="return false">
       <div style="grid-column:span 2"><label for="cUrl">Worker 網址</label><input id="cUrl" placeholder="從 Worker 網址開啟可留空"></div>
@@ -319,42 +294,6 @@ async function pullCloud(manual){
   }catch(e){cmsg('下載失敗:'+e.message,true)}
 }
 
-// --- 策略回測 ---
-function btFields(){const v=$('btStrat').value;document.querySelectorAll('.bt-ma,.bt-dca').forEach(e=>e.style.display=e.classList.contains('bt-'+v)?'':'none')}
-function btmsg(t,err){const m=$('btMsg');m.textContent=t;m.className='msg'+(err?' err':'')}
-let backtestBusy=false;
-async function runBacktest(){
-  if(backtestBusy)return;
-  const code=$('btSym').value.trim().toUpperCase(),months=+$('btMonths').value;
-  if(!api('/history'))return btmsg('回測需要歷史資料,請先在下方設定 Worker 網址',true);
-  backtestBusy=true;btmsg('下載歷史資料中…(第一次可能需要十幾秒)');
-  try{
-    const r=await fetch(api(`/history?code=${encodeURIComponent(code)}&months=${months}`));const d=await r.json();
-    if(!r.ok)throw new Error(d.error||r.status);
-    const res=backtest(d.rows,{strat:$('btStrat').value,cap:+$('btCap').value,short:+$('btShort').value,long:+$('btLong').value,
-      dca:+$('btDca').value,sl:+$('btSL').value/100,tp:+$('btTP').value/100,etf:$('btKind').value==='etf',disc:S.disc,slip:+$('btSlip').value});
-    showBacktest(code,d.rows,res);
-    if(d.warnings?.length)btmsg($('btMsg').textContent+' '+d.warnings.join('；'),true);
-  }catch(e){$('btStats').innerHTML='';$('btChart').innerHTML='';$('btLog').innerHTML='';$('btLegend').textContent='';btmsg('回測失敗:'+e.message,true)}finally{backtestBusy=false}
-}
-const backtest=PaperCore.backtest;
-function showBacktest(code,rows,{eq,bench,trades,invested,pending}){
-  const fin=eq[eq.length-1].v,ret=fin/invested-1,bfin=bench[bench.length-1].v,bret=bfin/invested-1;
-  let peak=-Infinity,mdd=0;for(const p of eq){peak=Math.max(peak,p.v);if(peak>0)mdd=Math.max(mdd,(peak-p.v)/peak)}
-  const sells=trades.filter(t=>t.side==='sell'),wins=sells.filter(t=>t.pnl>0);
-  const yrs=(eq[eq.length-1].t-eq[0].t)/31557600000,cagr=yrs>0.2&&fin>0?Math.pow(fin/invested,1/yrs)-1:null;
-  $('btStats').innerHTML=[
-    ['投入本金',fmt(invested),''],['期末資產',fmt(fin),''],['策略報酬',(ret*100).toFixed(2)+'%',cls(ret)],
-    ['年化報酬',cagr==null?'-':(cagr*100).toFixed(2)+'%',cls(cagr||0)],['買進持有',(bret*100).toFixed(2)+'%',cls(bret)],['超越基準',((ret-bret)*100).toFixed(2)+' 百分點',cls(ret-bret)],
-    ['最大回撤',(mdd*100).toFixed(2)+'%',''],['交易次數',trades.length,''],['賣出筆數勝率',sells.length?(wins.length/sells.length*100).toFixed(1)+'%':'-','']
-  ].map(([k,v,c])=>`<div class="stat"><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
-  drawChart($('btChart'),[{pts:bench,color:'var(--sub)',dash:true},{pts:eq,color:'var(--accent)'}],invested);
-  $('btLegend').innerHTML=`<span style="color:var(--accent)">━ 策略</span> <span>┅ 期初單筆買進持有</span> · ${rows[0].date} ~ ${rows[rows.length-1].date},${rows.length} 個交易日`;
-  $('btLog').innerHTML='<tr><th class="l">日期</th><th class="l">動作</th><th>價格</th><th>股數</th><th>損益</th></tr>'+
-    trades.map(t=>`<tr><td class="l">${t.date}</td><td class="l ${t.side==='buy'?'up':'down'}">${esc(t.why)}</td><td>${t.price}</td><td>${fmt(t.qty)}</td><td class="${cls(t.pnl)}">${t.pnl==null?'-':sgn(t.pnl)}</td></tr>`).join('');
-  btmsg(`${code} 回測完成${pending?'；最後一日訊號尚未成交':''}。期末持股按收盤市值計價，尚未扣未執行的賣出成本。`);
-}
-
 function saveSettings(){const d=parseFloat($('disc').value);if(d>=0&&d<=1){S.disc=d;save();msg('已儲存手續費折扣')}else msg('折扣需介於 0~1',true)}
 function resetAcct(){
   const cap=parseFloat($('cap').value);
@@ -373,7 +312,7 @@ $('imp').onchange=e=>{
   e.target.value=''
 };
 $('cUrl').value=cloud.url||'';$('cTok').value=cloud.token||'';
-btFields();render();if(loadWarning)msg(loadWarning,true);
+render();if(loadWarning)msg(loadWarning,true);
 // Explicit manual sync avoids startup overwrites.
 </script>
 </body>

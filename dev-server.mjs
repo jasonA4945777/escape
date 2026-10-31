@@ -12,7 +12,7 @@ const env={TOKEN:process.env.TOKEN,KV:{
 http.createServer(async(req,res)=>{
  try{
  const url=new URL(req.url,'http://127.0.0.1:8787');
- if(['/quote','/history','/account'].includes(url.pathname)){
+ if(['/quote','/account'].includes(url.pathname)){
   let body='';for await(const c of req)body+=c;
   const r=await worker.fetch(new Request(url,{method:req.method,headers:req.headers,...(body?{body}:{})}),env);
   res.writeHead(r.status,Object.fromEntries(r.headers));res.end(await r.text());return;
